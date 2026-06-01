@@ -14,7 +14,6 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "lint": "eslint 'src/**/*.ts'",
-    "prepublish": "npm run build",
     "version": "npm run build && git add manifest.json main.js styles.css",
     "release": "npm run build && node scripts/bundle-release.js"
   },

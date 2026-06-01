@@ -27,7 +27,12 @@ jobs:
         run: npm run build
 
       - name: Test
-        run: npm run test:coverage
+        run: npm run test
+
+      - name: Test Coverage
+        run: |
+          npm install --no-save @vitest/coverage-v8@1
+          npm run test:coverage
 
       - name: Format Check
         run: npx prettier --check 'src/**/*.ts' 'test/**/*.ts'
