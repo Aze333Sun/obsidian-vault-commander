@@ -9,6 +9,7 @@ import { InsightsAnalyzer } from './core/analyzer';
 import { EventBus } from './core/event-bus';
 import { CrossVaultFileSystem } from './utils/file';
 import { PerformanceMonitor } from './utils/performance';
+import { SearchModal } from './modals/search-modal';
 import { DEFAULT_SETTINGS } from './constants';
 import type { PluginSettings } from './types/settings';
 
@@ -25,6 +26,7 @@ export default class VaultCommanderPlugin extends Plugin {
 
   dashboardView: DashboardView | null = null;
   settingsTab: VaultCommanderSettingTab | null = null;
+  searchModal: SearchModal | null = null;
 
   async onload(): Promise<void> {
     console.log('[Vault Commander] 加载中...');
@@ -129,7 +131,10 @@ export default class VaultCommanderPlugin extends Plugin {
   }
 
   private openSearchModal(): void {
-    new Notice('跨库搜索功能将在 Phase 2 实现');
+    if (!this.searchModal) {
+      this.searchModal = new SearchModal(this);
+    }
+    this.searchModal.open();
   }
 
   private registerEventListeners(): void {
@@ -140,7 +145,7 @@ export default class VaultCommanderPlugin extends Plugin {
     });
 
     this.eventBus.on('scan:complete', ({ snapshots }) => {
-      this.searchEngine.buildFullIndex(snapshots);
+      this.searchEngine.buildIndex(snapshots, this.settings.vaults);
     });
   }
 
