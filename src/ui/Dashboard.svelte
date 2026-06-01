@@ -5,6 +5,7 @@
   import RecentChanges from './components/RecentChanges.svelte';
   import TagCloud from './components/TagCloud.svelte';
   import HealthSection from './components/HealthSection.svelte';
+  import SuggestionList from './components/SuggestionList.svelte';
   import LoadingSpinner from './shared/LoadingSpinner.svelte';
   import EmptyState from './shared/EmptyState.svelte';
   import ErrorBanner from './shared/ErrorBanner.svelte';
@@ -53,6 +54,13 @@
     };
   }> = [];
 
+  export let suggestions: Array<{
+    type: 'warning' | 'info' | 'tip';
+    message: string;
+    vaultId?: string;
+    action?: { label: string; command: string; params?: Record<string, string> };
+  }> = [];
+
   export let onRefresh: () => void = () => {};
   export let onOpenNote: (vaultId: string, filePath: string) => void = () => {};
   export let onOpenVault: (vaultId: string) => void = () => {};
@@ -99,6 +107,10 @@
 
       {#if healthData.length > 0}
         <HealthSection {healthData} />
+      {/if}
+
+      {#if suggestions.length > 0}
+        <SuggestionList {suggestions} />
       {/if}
     </div>
   {/if}
