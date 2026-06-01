@@ -52,6 +52,7 @@ export class DashboardView extends ItemView {
         tagCloud: [],
         healthData: [],
         suggestions: [],
+        embedData: [],
         scanning: false,
         error: null,
         onRefresh: () => this.plugin.scanner.refresh(),
@@ -177,6 +178,32 @@ export class DashboardView extends ItemView {
         arr.findIndex((x) => x.tag === t.tag) === i,
     );
 
+    // Embed reference data
+    const embedData: Array<{
+      vaultId: string;
+      vaultName: string;
+      images: number;
+      audio: number;
+      video: number;
+      other: number;
+      broken: number;
+    }> = [];
+    for (const [, snapshot] of snapshots) {
+      const vaultConfig = this.plugin.settings.vaults.find(
+        (v: { id: string }) => v.id === snapshot.vaultId,
+      );
+      const vaultName = vaultConfig?.name ?? snapshot.vaultId;
+      let embeds = { images: 0, audio: 0, video: 0, other: 0, broken: 0 };
+      for (const change of snapshot.recentChanges) {
+        embeds.images += change.embeds?.images ?? 0;
+        embeds.audio += change.embeds?.audio ?? 0;
+        embeds.video += change.embeds?.video ?? 0;
+        embeds.other += change.embeds?.other ?? 0;
+        embeds.broken += change.embeds?.broken ?? 0;
+      }
+      embedData.push({ vaultId: snapshot.vaultId, vaultName, ...embeds });
+    }
+
     this.component?.$set({
       scanning: false,
       vaults,
@@ -185,6 +212,7 @@ export class DashboardView extends ItemView {
       tagCloud: uniqueTags.slice(0, 50),
       healthData: allHealthData,
       suggestions: allSuggestions,
+      embedData,
     });
   }
 

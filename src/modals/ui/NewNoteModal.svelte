@@ -115,10 +115,9 @@
 </script>
 
 {#if visible}
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="vc-modal-overlay" role="dialog" aria-modal="true" on:click={onClose}>
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="vc-modal" on:click|stopPropagation on:keydown={handleKeydown}>
+  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+  <button class="vc-modal-overlay" on:click={onClose}>
+    <div class="vc-modal" on:click|stopPropagation on:keydown={handleKeydown} role="dialog" aria-modal="true">
       <div class="vc-modal-header">
         <h2 class="vc-modal-title">新建笔记</h2>
         <button class="vc-modal-close" on:click={onClose}>✕</button>
@@ -207,17 +206,6 @@
           </label>
         </div>
 
-        {#if false}
-        <!-- Conflict strategy (hidden, default: cancel) -->
-        <div class="vc-field">
-          <label class="vc-label">冲突处理</label>
-          <select class="vc-select" bind:value={onConflict} disabled={creating}>
-            <option value="cancel">取消创建</option>
-            <option value="rename">自动重命名</option>
-            <option value="overwrite">覆盖已有</option>
-          </select>
-        </div>
-        {/if}
       </div>
 
       <div class="vc-modal-footer">
@@ -227,7 +215,7 @@
         </button>
       </div>
     </div>
-  </div>
+  </button>
 {/if}
 
 <style>

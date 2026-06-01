@@ -6,6 +6,7 @@
   import TagCloud from './components/TagCloud.svelte';
   import HealthSection from './components/HealthSection.svelte';
   import SuggestionList from './components/SuggestionList.svelte';
+  import EmbedRefSection from './components/EmbedRefSection.svelte';
   import LoadingSpinner from './shared/LoadingSpinner.svelte';
   import EmptyState from './shared/EmptyState.svelte';
   import ErrorBanner from './shared/ErrorBanner.svelte';
@@ -52,6 +53,16 @@
       structure: number;
       updateFrequency: number;
     };
+  }> = [];
+
+  export let embedData: Array<{
+    vaultId: string;
+    vaultName: string;
+    images: number;
+    audio: number;
+    video: number;
+    other: number;
+    broken: number;
   }> = [];
 
   export let suggestions: Array<{
@@ -103,6 +114,10 @@
 
       {#if tagCloud.length > 0}
         <TagCloud tags={tagCloud} {onTagClick} />
+      {/if}
+
+      {#if embedData.length > 0}
+        <EmbedRefSection {embedData} />
       {/if}
 
       {#if healthData.length > 0}

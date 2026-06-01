@@ -168,11 +168,9 @@
 </script>
 
 {#if visible}
-  <!-- svelte-ignore a11y-click-events-have-key-events -->
-  <!-- svelte-ignore a11y-no-static-element-interactions -->
-  <div class="vc-search-overlay" role="dialog" aria-modal="true" on:click={onClose}>
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="vc-search-modal" on:click|stopPropagation on:keydown={handleKeydown}>
+  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+  <button class="vc-search-overlay" on:click={onClose}>
+    <div class="vc-search-modal" on:click|stopPropagation on:keydown={handleKeydown} role="dialog" aria-modal="true">
       <!-- Search input -->
       <div class="vc-search-header">
         <div class="vc-search-input-wrapper">
@@ -254,7 +252,7 @@
         <span class="vc-search-footer-item">Esc 关闭</span>
       </div>
     </div>
-  </div>
+  </button>
 {/if}
 
 
