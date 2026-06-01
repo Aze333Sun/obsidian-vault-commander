@@ -127,9 +127,4 @@
     letter-spacing: 0.05em;
     margin: 0 0 var(--size-4-1);
   }
-  .vc-muted {
-    color: var(--text-muted);
-    font-size: var(--font-small);
-    margin: 0;
-  }
 </style>

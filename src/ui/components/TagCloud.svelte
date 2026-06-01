@@ -20,12 +20,14 @@
   {:else}
     <div class="vc-tagcloud-container">
       {#each sorted as { tag, count }}
+        <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
         <span
           class="vc-tagcloud-tag"
           style="font-size: {fontSize(count)}"
           on:click={() => onTagClick?.(tag)}
+          on:keydown={(e) => { if (e.key === 'Enter' && onTagClick) onTagClick(tag); }}
           role={onTagClick ? 'button' : undefined}
-          tabindex={onTagClick ? 0 : undefined}
+          tabindex={onTagClick ? 0 : -1}
           title="{tag} ({count})"
         >
           #{tag}

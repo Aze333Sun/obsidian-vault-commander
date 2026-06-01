@@ -18,11 +18,10 @@
   {:else}
     <div class="vc-recent-list">
       {#each changes as item}
-        <div
+        <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
+        <button
           class="vc-recent-item"
           on:click={() => onOpenNote(item.vaultId, item.fileName)}
-          role="button"
-          tabindex="0"
         >
           <div class="vc-recent-main">
             <span class="vc-recent-title">{item.title}</span>
@@ -36,7 +35,7 @@
               <span class="vc-tag">#{tag}</span>
             {/each}
           </div>
-        </div>
+        </button>
       {/each}
     </div>
   {/if}

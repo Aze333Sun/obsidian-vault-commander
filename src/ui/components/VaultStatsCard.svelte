@@ -3,7 +3,6 @@
   export let totalNotes: number = 0;
   export let totalFolders: number = 0;
   export let tagCount: number = 0;
-  export let added24h: number = 0;
   export let added7d: number = 0;
 </script>
 
