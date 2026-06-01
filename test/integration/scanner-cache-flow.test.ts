@@ -13,10 +13,10 @@ describe('Scanner-Cache Integration Flow', () => {
 
   it('应该创建临时库结构并验证文件', () => {
     tempDir = createTempVaultStructure({
-      'notes': null,
+      notes: null,
       'notes/note1.md': '---\ntags: [test]\n---\n# Note 1',
       'notes/note2.md': '# Note 2',
-      'daily': null,
+      daily: null,
       'daily/2026-06-01.md': '---\ntitle: Daily Note\n---\nContent here',
     });
 

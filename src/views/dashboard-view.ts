@@ -57,15 +57,12 @@ export class DashboardView extends ItemView {
         error: null,
         onRefresh: () => this.plugin.scanner.refresh(),
         onOpenNote: (vaultId: string, filePath: string) => {
-          const vault = this.plugin.settings.vaults.find(
-            (v: { id: string }) => v.id === vaultId,
-          );
+          const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === vaultId);
           if (vault) {
             this.plugin.dispatcher.jumpToNote(vault, filePath);
           }
         },
-        onOpenVault: (vaultId: string) =>
-          this.plugin.dispatcher.openVault(vaultId),
+        onOpenVault: (vaultId: string) => this.plugin.dispatcher.openVault(vaultId),
         onSearch: (_query: string) => {
           if (!this.plugin.searchModal) {
             const { SearchModal } = require('../modals/search-modal');
@@ -137,9 +134,7 @@ export class DashboardView extends ItemView {
 
       allRecent.push(...snapshot.recentChanges);
 
-      for (const [tag, count] of Object.entries(
-        snapshot.tags as Record<string, number>,
-      )) {
+      for (const [tag, count] of Object.entries(snapshot.tags as Record<string, number>)) {
         allTags.push({ tag: String(tag), count: Number(count) });
       }
 

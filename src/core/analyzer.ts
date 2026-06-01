@@ -1,4 +1,10 @@
-import type { HealthScore, TrendData, TrendParams, TagAnalysis, Suggestion } from '../types/analyzer';
+import type {
+  HealthScore,
+  TrendData,
+  TrendParams,
+  TagAnalysis,
+  Suggestion,
+} from '../types/analyzer';
 import type { VaultSnapshot } from '../types/snapshot';
 
 export class InsightsAnalyzer {
@@ -7,12 +13,12 @@ export class InsightsAnalyzer {
 
   async getHealthScore(snapshot: VaultSnapshot): Promise<HealthScore> {
     const activity = Math.min((snapshot.health.lastWeekActiveDays / 7) * 100, 100);
-    const linkIntegrity = snapshot.totalNotes > 0
-      ? (1 - snapshot.health.orphanNotes / snapshot.totalNotes) * 100
-      : 100;
-    const structure = snapshot.totalNotes > 0
-      ? Math.min((snapshot.totalFolders / snapshot.totalNotes) * 200, 100)
-      : 100;
+    const linkIntegrity =
+      snapshot.totalNotes > 0 ? (1 - snapshot.health.orphanNotes / snapshot.totalNotes) * 100 : 100;
+    const structure =
+      snapshot.totalNotes > 0
+        ? Math.min((snapshot.totalFolders / snapshot.totalNotes) * 200, 100)
+        : 100;
     const avgDaily = snapshot.stats.modified7d / 7;
     const updateFrequency = Math.min((avgDaily / 5) * 100, 100);
 

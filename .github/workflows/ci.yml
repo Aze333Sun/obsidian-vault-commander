@@ -30,7 +30,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Format Check
-        run: npx prettier --check 'src/**/*.{ts,svelte}'
+        run: npx prettier --check 'src/**/*.ts' 'test/**/*.ts'
 
       - name: Check Bundle Size
         run: |

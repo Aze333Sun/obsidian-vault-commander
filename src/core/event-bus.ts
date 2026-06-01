@@ -16,7 +16,7 @@ export class EventBus {
   }
 
   emit(event: string, ...payload: any[]): void {
-    this.listeners.get(event)?.forEach(cb => {
+    this.listeners.get(event)?.forEach((cb) => {
       try {
         cb(...payload);
       } catch (err) {

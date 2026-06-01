@@ -15,13 +15,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     autoScanOnFocus: true,
   },
   ignore: {
-    patterns: [
-      '.git',
-      'node_modules',
-      '.obsidian',
-      '_attachments',
-      '*.exe',
-    ],
+    patterns: ['.git', 'node_modules', '.obsidian', '_attachments', '*.exe'],
     ignoreDotFiles: true,
   },
   templates: {

@@ -56,16 +56,19 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
           }),
         )
         .addButton((btn) =>
-          btn.setButtonText('移除').setWarning().onClick(async () => {
-            const idx = this.plugin.settings.vaults.findIndex((v) => v.id === vault.id);
-            if (idx > -1) {
-              this.plugin.settings.vaults.splice(idx, 1);
-              await this.plugin.cache.removeVault(vault.id);
-              await this.plugin.saveSettings();
-              this.plugin.eventBus.emit('vault:removed', { vaultId: vault.id });
-              this.display();
-            }
-          }),
+          btn
+            .setButtonText('移除')
+            .setWarning()
+            .onClick(async () => {
+              const idx = this.plugin.settings.vaults.findIndex((v) => v.id === vault.id);
+              if (idx > -1) {
+                this.plugin.settings.vaults.splice(idx, 1);
+                await this.plugin.cache.removeVault(vault.id);
+                await this.plugin.saveSettings();
+                this.plugin.eventBus.emit('vault:removed', { vaultId: vault.id });
+                this.display();
+              }
+            }),
         );
 
       // 路径状态指示
@@ -186,7 +189,12 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
           .addOption('manual', '手动')
           .setValue(this.plugin.settings.scan.frequency)
           .onChange(async (value: string) => {
-            this.plugin.settings.scan.frequency = value as 'realtime' | '30s' | '60s' | '5min' | 'manual';
+            this.plugin.settings.scan.frequency = value as
+              | 'realtime'
+              | '30s'
+              | '60s'
+              | '5min'
+              | 'manual';
             await this.plugin.saveSettings();
           });
       });

@@ -47,10 +47,7 @@ export class SearchEngine {
     });
   }
 
-  async buildIndex(
-    snapshots: Map<string, VaultSnapshot>,
-    vaults: VaultConfig[],
-  ): Promise<void> {
+  async buildIndex(snapshots: Map<string, VaultSnapshot>, vaults: VaultConfig[]): Promise<void> {
     this.buildPromise = this.buildAllIndexes(snapshots, vaults);
     await this.buildPromise;
   }
@@ -168,7 +165,7 @@ export class SearchEngine {
 
     // Extract matching context lines
     return rawResults.map((r) => {
-      const vaultName = (r as Record<string, unknown>).vaultName as string ?? '';
+      const vaultName = ((r as Record<string, unknown>).vaultName as string) ?? '';
       return {
         vaultId: r.vaultId as string,
         vaultName,
@@ -181,10 +178,7 @@ export class SearchEngine {
     });
   }
 
-  private extractMatches(
-    result: MiniSearchResult,
-    query: string,
-  ): SearchMatch[] {
+  private extractMatches(result: MiniSearchResult, query: string): SearchMatch[] {
     const matches: SearchMatch[] = [];
     const matchData = result.match ?? {};
 
@@ -209,7 +203,7 @@ export class SearchEngine {
     if (matches.length === 0) {
       matches.push({
         line: 0,
-        content: result.title as string || result.fileName as string || '',
+        content: (result.title as string) || (result.fileName as string) || '',
         highlights: [[0, 0]],
       });
     }

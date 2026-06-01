@@ -31,7 +31,7 @@ export class PerformanceMonitor {
   }
 
   average(label: string): string {
-    const entries = this.measures.filter(m => m.label === label);
+    const entries = this.measures.filter((m) => m.label === label);
     if (entries.length === 0) return '-';
     const avg = entries.reduce((s, e) => s + e.duration, 0) / entries.length;
     return `${avg.toFixed(1)}ms`;

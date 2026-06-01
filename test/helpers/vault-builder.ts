@@ -2,9 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-export function createTempVaultStructure(
-  files: Record<string, string | null>
-): string {
+export function createTempVaultStructure(files: Record<string, string | null>): string {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vc-test-'));
   for (const [filePath, content] of Object.entries(files)) {
     const fullPath = path.join(tmpDir, filePath);

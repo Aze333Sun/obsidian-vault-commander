@@ -8,7 +8,9 @@ describe('Scanner Performance Monitor', () => {
     perf.start('scan:phase1');
     // Simulate work
     const start = Date.now();
-    while (Date.now() - start < 10) { /* noop */ }
+    while (Date.now() - start < 10) {
+      /* noop */
+    }
     const duration = perf.end('scan:phase1');
 
     expect(duration).toBeGreaterThan(0);

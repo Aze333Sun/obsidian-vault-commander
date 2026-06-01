@@ -48,12 +48,19 @@ describe('InsightsAnalyzer', () => {
         totalNotes: 0,
         totalFolders: 0,
         stats: {
-          added24h: 0, added7d: 0, added30d: 0,
-          modified24h: 0, modified7d: 0, modified30d: 0,
+          added24h: 0,
+          added7d: 0,
+          added30d: 0,
+          modified24h: 0,
+          modified7d: 0,
+          modified30d: 0,
         },
         health: {
-          score: 100, orphanNotes: 0, brokenLinks: 0,
-          brokenEmbeds: 0, lastWeekActiveDays: 7,
+          score: 100,
+          orphanNotes: 0,
+          brokenLinks: 0,
+          brokenEmbeds: 0,
+          lastWeekActiveDays: 7,
         },
       });
       const result = await analyzer.getHealthScore(snapshot);
@@ -65,38 +72,58 @@ describe('InsightsAnalyzer', () => {
     it('孤立笔记会降低链接完整性评分', async () => {
       const good = createMockSnapshot();
       const bad = createMockSnapshot({
-        health: { score: 50, orphanNotes: 50, brokenLinks: 10, brokenEmbeds: 5, lastWeekActiveDays: 3 },
+        health: {
+          score: 50,
+          orphanNotes: 50,
+          brokenLinks: 10,
+          brokenEmbeds: 5,
+          lastWeekActiveDays: 3,
+        },
       });
 
       const goodResult = await analyzer.getHealthScore(good);
       const badResult = await analyzer.getHealthScore(bad);
 
-      expect(badResult.dimensions.linkIntegrity).toBeLessThan(
-        goodResult.dimensions.linkIntegrity,
-      );
+      expect(badResult.dimensions.linkIntegrity).toBeLessThan(goodResult.dimensions.linkIntegrity);
     });
 
     it('低活跃天数会降低活跃度评分', async () => {
       const active = createMockSnapshot({
-        health: { score: 90, orphanNotes: 0, brokenLinks: 0, brokenEmbeds: 0, lastWeekActiveDays: 7 },
+        health: {
+          score: 90,
+          orphanNotes: 0,
+          brokenLinks: 0,
+          brokenEmbeds: 0,
+          lastWeekActiveDays: 7,
+        },
       });
       const inactive = createMockSnapshot({
-        health: { score: 30, orphanNotes: 0, brokenLinks: 0, brokenEmbeds: 0, lastWeekActiveDays: 1 },
+        health: {
+          score: 30,
+          orphanNotes: 0,
+          brokenLinks: 0,
+          brokenEmbeds: 0,
+          lastWeekActiveDays: 1,
+        },
       });
 
       const activeResult = await analyzer.getHealthScore(active);
       const inactiveResult = await analyzer.getHealthScore(inactive);
 
-      expect(inactiveResult.dimensions.activity).toBeLessThan(
-        activeResult.dimensions.activity,
-      );
+      expect(inactiveResult.dimensions.activity).toBeLessThan(activeResult.dimensions.activity);
     });
   });
 
   describe('getSuggestions', () => {
     it('应该对有孤立笔记的库生成警告', async () => {
       const snapshot = createMockSnapshot({
-        health: { score: 70, orphanNotes: 5, brokenLinks: 0, brokenEmbeds: 0, lastWeekActiveDays: 7 },
+        health: {
+          score: 70,
+          orphanNotes: 5,
+          brokenLinks: 0,
+          brokenEmbeds: 0,
+          lastWeekActiveDays: 7,
+        },
       });
       const suggestions = await analyzer.getSuggestions(snapshot);
       expect(suggestions.some((s) => s.type === 'warning')).toBe(true);
@@ -104,7 +131,13 @@ describe('InsightsAnalyzer', () => {
 
     it('应该对低活跃度生成提示', async () => {
       const snapshot = createMockSnapshot({
-        health: { score: 70, orphanNotes: 0, brokenLinks: 0, brokenEmbeds: 0, lastWeekActiveDays: 1 },
+        health: {
+          score: 70,
+          orphanNotes: 0,
+          brokenLinks: 0,
+          brokenEmbeds: 0,
+          lastWeekActiveDays: 1,
+        },
       });
       const suggestions = await analyzer.getSuggestions(snapshot);
       expect(suggestions.some((s) => s.type === 'tip')).toBe(true);
@@ -112,7 +145,13 @@ describe('InsightsAnalyzer', () => {
 
     it('健康库应无警告', async () => {
       const snapshot = createMockSnapshot({
-        health: { score: 95, orphanNotes: 0, brokenLinks: 0, brokenEmbeds: 0, lastWeekActiveDays: 7 },
+        health: {
+          score: 95,
+          orphanNotes: 0,
+          brokenLinks: 0,
+          brokenEmbeds: 0,
+          lastWeekActiveDays: 7,
+        },
       });
       const suggestions = await analyzer.getSuggestions(snapshot);
       expect(suggestions.filter((s) => s.type === 'warning').length).toBe(0);

@@ -26,9 +26,7 @@ export class NoteDispatcher {
   // ─── 文件夹列表 ──────────────────────────────────
 
   async getFolders(vaultId: string): Promise<string[]> {
-    const vault = this.plugin.settings.vaults.find(
-      (v: { id: string }) => v.id === vaultId,
-    );
+    const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === vaultId);
     if (!vault) return [];
 
     const folders = new Set<string>();
@@ -58,9 +56,7 @@ export class NoteDispatcher {
   // ─── 模板列表 ────────────────────────────────────
 
   async getTemplates(vaultId: string): Promise<Array<{ name: string; path: string }>> {
-    const vault = this.plugin.settings.vaults.find(
-      (v: { id: string }) => v.id === vaultId,
-    );
+    const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === vaultId);
     if (!vault) return [];
 
     const templateDir = vault.templateFolder
@@ -75,9 +71,7 @@ export class NoteDispatcher {
         .filter((e) => e.isFile() && e.name.endsWith('.md'))
         .map((e) => ({
           name: e.name.replace('.md', ''),
-          path: vault.templateFolder
-            ? `${vault.templateFolder}/${e.name}`
-            : `Templates/${e.name}`,
+          path: vault.templateFolder ? `${vault.templateFolder}/${e.name}` : `Templates/${e.name}`,
         }));
     } catch {
       return [];
@@ -87,7 +81,9 @@ export class NoteDispatcher {
   // ─── 新建笔记 ────────────────────────────────────
 
   async createNote(params: CreateNoteParams): Promise<CreateNoteResult> {
-    const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === params.targetVaultId);
+    const vault = this.plugin.settings.vaults.find(
+      (v: { id: string }) => v.id === params.targetVaultId,
+    );
     if (!vault) {
       return { success: false, vaultId: params.targetVaultId, filePath: '', error: '库未找到' };
     }
@@ -99,7 +95,12 @@ export class NoteDispatcher {
     try {
       await fs.promises.access(fullPath);
       if (params.onConflict === 'cancel') {
-        return { success: false, vaultId: params.targetVaultId, filePath: '', error: 'FILE_EXISTS' };
+        return {
+          success: false,
+          vaultId: params.targetVaultId,
+          filePath: '',
+          error: 'FILE_EXISTS',
+        };
       }
       if (params.onConflict === 'rename') {
         const renamed = await this.resolveConflict(fullPath);
@@ -121,7 +122,10 @@ export class NoteDispatcher {
     if (params.templateId) {
       content = await this.loadTemplate(vault, params.templateId);
     }
-    content = TemplateEngine.render(content || '', TemplateEngine.getDefaultVariables(params.title));
+    content = TemplateEngine.render(
+      content || '',
+      TemplateEngine.getDefaultVariables(params.title),
+    );
 
     const fullPath = path.join(vault.path, relativePath);
     await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });

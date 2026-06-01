@@ -22,10 +22,7 @@ export class SearchModal {
         onSearch: async (query: string): Promise<SearchResult[]> => {
           if (!this.plugin.searchEngine.isIndexReady()) {
             const snapshots = this.plugin.scanner.getAllSnapshots();
-            await this.plugin.searchEngine.buildIndex(
-              snapshots,
-              this.plugin.settings.vaults,
-            );
+            await this.plugin.searchEngine.buildIndex(snapshots, this.plugin.settings.vaults);
           }
           return this.plugin.searchEngine.search(
             { query, mode: 'content', maxResults: 50 },

@@ -47,13 +47,10 @@ export default class VaultCommanderPlugin extends Plugin {
     this.dispatcher = new NoteDispatcher(this);
     this.analyzer = new InsightsAnalyzer(this.cache);
 
-    this.registerView(
-      DashboardView.VIEW_TYPE,
-      (leaf) => {
-        this.dashboardView = new DashboardView(leaf, this);
-        return this.dashboardView;
-      }
-    );
+    this.registerView(DashboardView.VIEW_TYPE, (leaf) => {
+      this.dashboardView = new DashboardView(leaf, this);
+      return this.dashboardView;
+    });
 
     this.addCommand({
       id: 'open-dashboard',
@@ -154,11 +151,7 @@ export default class VaultCommanderPlugin extends Plugin {
     });
   }
 
-  async safeExecute<T>(
-    operation: () => Promise<T>,
-    fallback: T,
-    errorMessage: string,
-  ): Promise<T> {
+  async safeExecute<T>(operation: () => Promise<T>, fallback: T, errorMessage: string): Promise<T> {
     try {
       return await operation();
     } catch (err) {

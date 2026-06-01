@@ -75,9 +75,7 @@ export class VaultScanner {
     this.abortController = new AbortController();
     this.perf.start('scan:phase1');
 
-    const vaults = this.plugin.settings.vaults.filter(
-      (v: VaultConfig) => v.isEnabled,
-    );
+    const vaults = this.plugin.settings.vaults.filter((v: VaultConfig) => v.isEnabled);
 
     this.plugin.eventBus.emit('scan:start', {
       vaultIds: vaults.map((v: VaultConfig) => v.id),
@@ -115,9 +113,7 @@ export class VaultScanner {
 
     this.plugin.eventBus.emit('scan:complete', { snapshots: results });
 
-    console.log(
-      `[VC] 扫描完成: ${results.size} 个库, 耗时 ${duration.toFixed(0)}ms`,
-    );
+    console.log(`[VC] 扫描完成: ${results.size} 个库, 耗时 ${duration.toFixed(0)}ms`);
 
     return results;
   }
@@ -134,9 +130,7 @@ export class VaultScanner {
     this.perf.start('scan:incremental');
 
     const results = new Map<string, VaultSnapshot>();
-    const vaults = this.plugin.settings.vaults.filter(
-      (v: VaultConfig) => v.isEnabled,
-    );
+    const vaults = this.plugin.settings.vaults.filter((v: VaultConfig) => v.isEnabled);
 
     for (const config of vaults) {
       if (this.abortController.signal.aborted) break;
@@ -169,9 +163,8 @@ export class VaultScanner {
       return this.scanVault(config);
     }
 
-    const adapterPath = (
-      this.plugin.app.vault.adapter as unknown as Record<string, unknown>
-    ).basePath as string | undefined;
+    const adapterPath = (this.plugin.app.vault.adapter as unknown as Record<string, unknown>)
+      .basePath as string | undefined;
     const isCurrentVault = adapterPath
       ? PathUtils.normalize(config.path) === PathUtils.normalize(adapterPath)
       : false;
@@ -216,8 +209,7 @@ export class VaultScanner {
         (c) => c.fileName === file.name && c.folder === dir,
       );
 
-      const isNew =
-        !prevChange || prevChange.mtime !== file.stat.mtime;
+      const isNew = !prevChange || prevChange.mtime !== file.stat.mtime;
 
       if (isNew) changesDetected = true;
 
@@ -279,9 +271,7 @@ export class VaultScanner {
 
       for (const entry of entries) {
         const fullPath = nodePath.join(dir, entry.name);
-        const relPath = PathUtils.normalize(
-          nodePath.relative(config.path, fullPath),
-        );
+        const relPath = PathUtils.normalize(nodePath.relative(config.path, fullPath));
 
         // Ignore pattern check
         if (shouldIgnore(relPath, entry.name, settings, config)) continue;
@@ -304,8 +294,7 @@ export class VaultScanner {
           if (stat.size > settings.scan.maxFileSize) continue;
 
           const relDir = nodePath.dirname(relPath);
-          snapshot.notesByFolder[relDir] =
-            (snapshot.notesByFolder[relDir] || 0) + 1;
+          snapshot.notesByFolder[relDir] = (snapshot.notesByFolder[relDir] || 0) + 1;
           snapshot.totalNotes++;
 
           const prevMtime = prevFileMap.get(relPath);
@@ -361,9 +350,8 @@ export class VaultScanner {
   // ─── 单库扫描 ─────────────────────────────────────
 
   async scanVault(config: VaultConfig): Promise<VaultSnapshot | null> {
-    const adapterPath = (
-      this.plugin.app.vault.adapter as unknown as Record<string, unknown>
-    ).basePath as string | undefined;
+    const adapterPath = (this.plugin.app.vault.adapter as unknown as Record<string, unknown>)
+      .basePath as string | undefined;
     const isCurrentVault = adapterPath
       ? PathUtils.normalize(config.path) === PathUtils.normalize(adapterPath)
       : false;
@@ -403,10 +391,7 @@ export class VaultScanner {
         title: file.basename,
         mtime: file.stat.mtime,
         size: file.stat.size,
-        tags:
-          metaCache?.tags?.map((t: { tag: string }) =>
-            t.tag.replace(/^#/, ''),
-          ) ?? [],
+        tags: metaCache?.tags?.map((t: { tag: string }) => t.tag.replace(/^#/, '')) ?? [],
         wordCount: 0,
         links: {
           outgoing: metaCache?.links?.length ?? 0,
@@ -443,9 +428,7 @@ export class VaultScanner {
 
       for (const entry of entries) {
         const fullPath = nodePath.join(dir, entry.name);
-        const relPath = PathUtils.normalize(
-          nodePath.relative(config.path, fullPath),
-        );
+        const relPath = PathUtils.normalize(nodePath.relative(config.path, fullPath));
 
         if (shouldIgnore(relPath, entry.name, settings, config)) continue;
 
@@ -466,8 +449,7 @@ export class VaultScanner {
           if (stat.size > settings.scan.maxFileSize) {
             // Still count the file but skip content reading
             const relDir = nodePath.dirname(relPath);
-            snapshot.notesByFolder[relDir] =
-              (snapshot.notesByFolder[relDir] || 0) + 1;
+            snapshot.notesByFolder[relDir] = (snapshot.notesByFolder[relDir] || 0) + 1;
             snapshot.totalNotes++;
             snapshot.recentChanges.push({
               vaultId: config.id,
@@ -479,7 +461,12 @@ export class VaultScanner {
               wordCount: 0,
               links: { outgoing: 0, incoming: 0 },
               embeds: {
-                images: 0, audio: 0, video: 0, other: 0, total: 0, broken: 0,
+                images: 0,
+                audio: 0,
+                video: 0,
+                other: 0,
+                total: 0,
+                broken: 0,
               },
               folder: relDir,
               isNew: false,
@@ -487,10 +474,7 @@ export class VaultScanner {
             continue;
           }
 
-          const content = await readFileContent(
-            fullPath,
-            settings.scan.maxFileSize,
-          );
+          const content = await readFileContent(fullPath, settings.scan.maxFileSize);
           const { title, tags: fileTags } = parseFrontmatter(content);
           const links = LinkParser.parse(content);
 
@@ -499,8 +483,7 @@ export class VaultScanner {
           }
 
           const relDir = nodePath.dirname(relPath);
-          snapshot.notesByFolder[relDir] =
-            (snapshot.notesByFolder[relDir] || 0) + 1;
+          snapshot.notesByFolder[relDir] = (snapshot.notesByFolder[relDir] || 0) + 1;
           snapshot.totalNotes++;
 
           snapshot.recentChanges.push({
@@ -665,21 +648,15 @@ export class VaultScanner {
     );
   }
 
-  private countEmbeds(
-    _config: VaultConfig,
-    embeds: Array<{ link: string }>,
-  ): NoteChange['embeds'] {
-    const IMG_EXTS = new Set([
-      '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico',
-    ]);
-    const AUDIO_EXTS = new Set([
-      '.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac',
-    ]);
-    const VIDEO_EXTS = new Set([
-      '.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv',
-    ]);
+  private countEmbeds(_config: VaultConfig, embeds: Array<{ link: string }>): NoteChange['embeds'] {
+    const IMG_EXTS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico']);
+    const AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac']);
+    const VIDEO_EXTS = new Set(['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv']);
 
-    let images = 0, audio = 0, video = 0, other = 0;
+    let images = 0,
+      audio = 0,
+      video = 0,
+      other = 0;
 
     for (const e of embeds) {
       const ext = PathUtils.extname(e.link);
@@ -713,10 +690,7 @@ function shouldIgnore(
     return true;
   }
 
-  const allPatterns = [
-    ...settings.ignore.patterns,
-    ...vaultConfig.ignorePatterns,
-  ];
+  const allPatterns = [...settings.ignore.patterns, ...vaultConfig.ignorePatterns];
 
   for (const pattern of allPatterns) {
     if (matchGlob(pattern, relPath, entryName)) return true;
@@ -725,11 +699,7 @@ function shouldIgnore(
   return false;
 }
 
-function matchGlob(
-  pattern: string,
-  _relPath: string,
-  entryName: string,
-): boolean {
+function matchGlob(pattern: string, _relPath: string, entryName: string): boolean {
   // Exact name match
   if (pattern === entryName) return true;
 
@@ -757,10 +727,7 @@ function isScanTarget(
   return ext === '.md';
 }
 
-async function readFileContent(
-  filePath: string,
-  maxSize: number,
-): Promise<string> {
+async function readFileContent(filePath: string, maxSize: number): Promise<string> {
   const fs = await import('fs');
   try {
     const stat = await fs.promises.stat(filePath);
@@ -779,9 +746,7 @@ async function readFileContent(
 function countWords(text: string): number {
   // Strip frontmatter
   const bodyMatch = text.match(/^---[\s\S]*?---\n*/);
-  const body = bodyMatch
-    ? text.slice(bodyMatch[0].length)
-    : text;
+  const body = bodyMatch ? text.slice(bodyMatch[0].length) : text;
 
   // Count CJK characters + words
   const cjkCount = (body.match(/[一-鿿぀-ゟ゠-ヿ가-힯]/g) || []).length;

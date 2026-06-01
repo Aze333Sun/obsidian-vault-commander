@@ -3,7 +3,10 @@ import { vi } from 'vitest';
 // Mock global browser APIs that might not exist in Node environment
 vi.stubGlobal('requestIdleCallback', (cb: IdleRequestCallback, _opts?: IdleRequestOptions) => {
   const start = Date.now();
-  return setTimeout(() => cb({ didTimeout: false, timeRemaining: () => Math.max(0, 50 - (Date.now() - start)) }), 0);
+  return setTimeout(
+    () => cb({ didTimeout: false, timeRemaining: () => Math.max(0, 50 - (Date.now() - start)) }),
+    0,
+  );
 });
 
 vi.stubGlobal('cancelIdleCallback', (id: number) => clearTimeout(id));

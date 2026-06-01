@@ -40,14 +40,20 @@ export function getConcurrencyForStorage(storageType: 'ssd' | 'hdd' | 'nas' | 'r
   read: number;
 } {
   switch (storageType) {
-    case 'ssd':    return { stat: 50, read: 20 };
-    case 'hdd':    return { stat: 8,  read: 4 };
-    case 'nas':    return { stat: 8,  read: 4 };
-    case 'remote': return { stat: 3,  read: 2 };
+    case 'ssd':
+      return { stat: 50, read: 20 };
+    case 'hdd':
+      return { stat: 8, read: 4 };
+    case 'nas':
+      return { stat: 8, read: 4 };
+    case 'remote':
+      return { stat: 3, read: 2 };
   }
 }
 
-export async function detectStorageType(testPath: string): Promise<'ssd' | 'hdd' | 'nas' | 'remote'> {
+export async function detectStorageType(
+  testPath: string,
+): Promise<'ssd' | 'hdd' | 'nas' | 'remote'> {
   const path = await import('path');
   const fs = await import('fs');
   const testFile = path.join(testPath, '.vc-storage-test');

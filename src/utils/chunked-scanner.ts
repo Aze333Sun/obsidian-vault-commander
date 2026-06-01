@@ -19,7 +19,7 @@ export class ChunkedScanner {
       onProgress?.({
         current: Math.min(i + chunkSize, items.length),
         total: items.length,
-        percent: Math.min((i + chunkSize) / items.length * 100, 100),
+        percent: Math.min(((i + chunkSize) / items.length) * 100, 100),
       });
 
       await this.yieldToMainThread();
@@ -31,7 +31,7 @@ export class ChunkedScanner {
   }
 
   private yieldToMainThread(): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       if (typeof requestIdleCallback !== 'undefined') {
         requestIdleCallback(() => resolve(), { timeout: 50 });
       } else {
