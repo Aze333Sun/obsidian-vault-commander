@@ -1,0 +1,10 @@
+{
+  "id": "vault-commander",
+  "name": "Vault Commander",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "跨库管理控制台 — 仪表盘、搜索、笔记分发、洞察",
+  "author": "ze",
+  "authorUrl": "",
+  "isDesktopOnly": true
+}

@@ -1,0 +1,98 @@
+/* styles/vault-commander.css */
+
+.vc-dashboard {
+  padding: var(--size-4-3);
+  font-family: var(--font-interface);
+  color: var(--text-normal);
+  background: var(--background-primary);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.vc-card {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  padding: var(--size-4-3);
+  margin-bottom: var(--size-4-2);
+  transition: border-color 0.15s ease;
+}
+
+.vc-card:hover {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.vc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-s);
+  font-size: var(--font-small);
+  background: var(--tag-background);
+  color: var(--tag-color);
+}
+
+.vc-button {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: var(--radius-s);
+  padding: var(--size-4-1) var(--size-4-2);
+  cursor: pointer;
+  font-size: var(--font-ui-small);
+  transition: background 0.15s ease;
+}
+
+.vc-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.vc-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vc-section-title {
+  font-size: var(--font-ui-small);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--size-4-1);
+}
+
+.vc-muted {
+  color: var(--text-muted);
+  font-size: var(--font-small);
+  margin: 0;
+}
+
+.vc-empty-hint {
+  color: var(--text-faint);
+  font-size: var(--font-small);
+  padding: var(--size-4-2) 0;
+}
+
+.vc-file-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-1);
+  margin-bottom: var(--size-4-2);
+}
+
+.vc-vault-status {
+  font-size: var(--font-small);
+  margin-left: var(--size-4-2);
+}
+
+.vc-status-ok {
+  color: var(--color-green);
+}
+
+.vc-status-warning {
+  color: var(--color-orange);
+}
+
+.vc-status-error {
+  color: var(--color-red);
+}

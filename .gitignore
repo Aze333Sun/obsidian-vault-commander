@@ -1,0 +1,39 @@
+# Obsidian 插件产物
+main.js
+styles.css
+*.hot-update.js
+*.hot-update.json
+
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+out/
+
+# 系统
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 测试临时文件
+test-temp/
+
+# 环境
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# 开发日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

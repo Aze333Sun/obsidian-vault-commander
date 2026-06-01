@@ -1,0 +1,54 @@
+import type { PluginSettings } from './types/settings';
+
+export const PLUGIN_NAME = 'vault-commander';
+export const VIEW_TYPE_DASHBOARD = 'vault-commander-dashboard';
+
+export const DEFAULT_SETTINGS: PluginSettings = {
+  vaults: [],
+  scan: {
+    frequency: '60s',
+    incrementalOnly: true,
+    maxFileSize: 10 * 1024 * 1024,
+    fileTypes: {
+      enabled: ['.md'],
+    },
+    autoScanOnFocus: true,
+  },
+  ignore: {
+    patterns: [
+      '.git',
+      'node_modules',
+      '.obsidian',
+      '_attachments',
+      '*.exe',
+    ],
+    ignoreDotFiles: true,
+  },
+  templates: {
+    defaultTemplates: {},
+    defaultFolders: {},
+  },
+  ui: {
+    showTagCloud: true,
+    showHealthScore: true,
+    showEmbedRef: true,
+    maxRecentItems: 20,
+    compactMode: false,
+    searchHistory: [],
+  },
+  version: 1,
+};
+
+export const SCAN_FREQUENCIES = [
+  { value: 'realtime' as const, label: '实时' },
+  { value: '30s' as const, label: '30 秒' },
+  { value: '60s' as const, label: '1 分钟' },
+  { value: '5min' as const, label: '5 分钟' },
+  { value: 'manual' as const, label: '手动' },
+];
+
+export const EMBED_EXTENSION_CATEGORIES = {
+  image: ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico'],
+  audio: ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac'],
+  video: ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv'],
+} as const;

@@ -1,0 +1,49 @@
+{
+  "name": "obsidian-vault-commander",
+  "version": "0.1.0",
+  "description": "跨库管理控制台 — 仪表盘、搜索、笔记分发、洞察",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "npm run typecheck && node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit --skipLibCheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:perf": "vitest run test/performance --reporter=verbose",
+    "format": "prettier --write 'src/**/*.{ts,svelte}'",
+    "format:check": "prettier --check 'src/**/*.{ts,svelte}'",
+    "lint": "eslint 'src/**/*.ts'",
+    "prepublish": "npm run build",
+    "version": "npm run build && git add manifest.json main.js styles.css",
+    "release": "npm run build && node scripts/bundle-release.js"
+  },
+  "devDependencies": {
+    "@tsconfig/svelte": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.19.0",
+    "esbuild-svelte": "^0.8.0",
+    "obsidian": "^1.4.0",
+    "prettier": "^3.0.0",
+    "svelte": "^4.2.0",
+    "svelte-preprocess": "^5.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.0",
+    "minisearch": "^7.0.0"
+  },
+  "optionalDependencies": {
+    "chart.js": "^4.4.0",
+    "svelte-chartjs": "^3.1.0"
+  },
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "multi-vault",
+    "dashboard"
+  ],
+  "license": "MIT",
+  "private": true
+}
