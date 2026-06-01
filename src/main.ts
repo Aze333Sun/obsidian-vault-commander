@@ -10,6 +10,7 @@ import { EventBus } from './core/event-bus';
 import { CrossVaultFileSystem } from './utils/file';
 import { PerformanceMonitor } from './utils/performance';
 import { SearchModal } from './modals/search-modal';
+import { NewNoteModal } from './modals/new-note-modal';
 import { DEFAULT_SETTINGS } from './constants';
 import type { PluginSettings } from './types/settings';
 
@@ -27,6 +28,7 @@ export default class VaultCommanderPlugin extends Plugin {
   dashboardView: DashboardView | null = null;
   settingsTab: VaultCommanderSettingTab | null = null;
   searchModal: SearchModal | null = null;
+  newNoteModal: NewNoteModal | null = null;
 
   async onload(): Promise<void> {
     console.log('[Vault Commander] 加载中...');
@@ -127,7 +129,10 @@ export default class VaultCommanderPlugin extends Plugin {
   }
 
   private openNewNoteModal(): void {
-    new Notice('新建笔记功能将在 Phase 3 实现');
+    if (!this.newNoteModal) {
+      this.newNoteModal = new NewNoteModal(this);
+    }
+    this.newNoteModal.open();
   }
 
   private openSearchModal(): void {

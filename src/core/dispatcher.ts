@@ -23,6 +23,69 @@ export interface CreateNoteResult {
 export class NoteDispatcher {
   constructor(private plugin: VaultCommanderPlugin) {}
 
+  // ─── 文件夹列表 ──────────────────────────────────
+
+  async getFolders(vaultId: string): Promise<string[]> {
+    const vault = this.plugin.settings.vaults.find(
+      (v: { id: string }) => v.id === vaultId,
+    );
+    if (!vault) return [];
+
+    const folders = new Set<string>();
+    folders.add('/');
+
+    try {
+      const entries = await fs.promises.readdir(vault.path, {
+        withFileTypes: true,
+        recursive: true,
+      });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const p = entry.path || (entry as any).parentPath + '/' + entry.name;
+          const rel = '/' + path.relative(vault.path, p).replace(/\\/g, '/');
+          if (!rel.startsWith('.')) {
+            folders.add(rel);
+          }
+        }
+      }
+    } catch {
+      // Fall back to just root
+    }
+
+    return [...folders].sort();
+  }
+
+  // ─── 模板列表 ────────────────────────────────────
+
+  async getTemplates(vaultId: string): Promise<Array<{ name: string; path: string }>> {
+    const vault = this.plugin.settings.vaults.find(
+      (v: { id: string }) => v.id === vaultId,
+    );
+    if (!vault) return [];
+
+    const templateDir = vault.templateFolder
+      ? path.join(vault.path, vault.templateFolder)
+      : path.join(vault.path, 'Templates');
+
+    try {
+      const entries = await fs.promises.readdir(templateDir, {
+        withFileTypes: true,
+      });
+      return entries
+        .filter((e) => e.isFile() && e.name.endsWith('.md'))
+        .map((e) => ({
+          name: e.name.replace('.md', ''),
+          path: vault.templateFolder
+            ? `${vault.templateFolder}/${e.name}`
+            : `Templates/${e.name}`,
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  // ─── 新建笔记 ────────────────────────────────────
+
   async createNote(params: CreateNoteParams): Promise<CreateNoteResult> {
     const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === params.targetVaultId);
     if (!vault) {
