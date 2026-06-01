@@ -52,6 +52,14 @@ async function build() {
 
     const result = await esbuild.build(config);
 
+    // 复制 CSS 到产物根目录
+    const cssSrc = path.join('styles', 'vault-commander.css');
+    const cssDest = 'styles.css';
+    if (fs.existsSync(cssSrc)) {
+      fs.copyFileSync(cssSrc, cssDest);
+      console.log(`📄 styles.css (${(fs.statSync(cssDest).size / 1024).toFixed(1)} KB)`);
+    }
+
     if (isProduction) {
       const stats = fs.statSync('main.js');
       const sizeKB = (stats.size / 1024).toFixed(1);
