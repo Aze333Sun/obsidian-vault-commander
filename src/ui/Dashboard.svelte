@@ -49,6 +49,7 @@
 
   export let onRefresh: () => void = () => {};
   export let onNewNote: (() => void) | null = null;
+  export let onImport: (() => void) | null = null;
   export let onOpenNote: (vaultId: string, filePath: string) => void = () => {};
   export let onSearch: () => void = () => {};
   export let onTagClick: (tag: string) => void = () => {};
@@ -194,7 +195,7 @@
 
 <div class="vc-dashboard">
   <TopBar
-    onRefresh={onRefresh} onSearch={onSearch} {onNewNote} {scanning}
+    onRefresh={onRefresh} onSearch={onSearch} {onNewNote} {onImport} {scanning}
     hostName={hostVault?.name ?? ''}
     hostNotes={hostVault?.totalNotes ?? 0}
     showHealth={!!activeHealthData}

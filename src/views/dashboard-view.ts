@@ -78,6 +78,11 @@ export class DashboardView extends ItemView {
           }
           this.plugin.newNoteModal?.open();
         },
+        onImport: () => {
+          const { ImportModal } = require('../modals/import-modal');
+          const modal = new ImportModal(this.plugin);
+          modal.open();
+        },
         onSearch: () => {
           if (!this.plugin.searchModal) {
             const { SearchModal } = require('../modals/search-modal');

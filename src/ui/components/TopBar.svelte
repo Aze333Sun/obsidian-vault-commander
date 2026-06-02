@@ -2,6 +2,7 @@
   export let onRefresh: (() => void) | null = null;
   export let onSearch: (() => void) | null = null;
   export let onNewNote: (() => void) | null = null;
+  export let onImport: (() => void) | null = null;
   export let scanning: boolean = false;
   export let hostName: string = '';
   export let hostNotes: number = 0;
@@ -45,6 +46,11 @@
     {#if onNewNote}
       <button class="vc-icon-btn" on:click={onNewNote} title="新建笔记并分发">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    {/if}
+    {#if onImport}
+      <button class="vc-icon-btn" on:click={onImport} title="从外库导入笔记">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
     {/if}
     {#if onSearch}

@@ -12,6 +12,7 @@ import { PerformanceMonitor } from './utils/performance';
 import { DebugLogger } from './utils/debug-logger';
 import { SearchModal } from './modals/search-modal';
 import { DispatchModal } from './modals/dispatch-modal';
+import { ImportModal } from './modals/import-modal';
 import { NewNoteModal } from './modals/new-note-modal';
 import { DEFAULT_SETTINGS } from './constants';
 import type { PluginSettings } from './types/settings';
@@ -32,6 +33,7 @@ export default class VaultCommanderPlugin extends Plugin {
   settingsTab: VaultCommanderSettingTab | null = null;
   searchModal: SearchModal | null = null;
   dispatchModal: DispatchModal | null = null;
+  importModal: ImportModal | null = null;
   newNoteModal: NewNoteModal | null = null;
 
   async onload(): Promise<void> {
@@ -83,6 +85,11 @@ export default class VaultCommanderPlugin extends Plugin {
       id: 'dispatch-note',
       name: '分发当前笔记到其他库',
       callback: () => this.openDispatchModal(),
+    });
+    this.addCommand({
+      id: 'import-note',
+      name: '从外库导入笔记',
+      callback: () => this.openImportModal(),
     });
     this.addCommand({
       id: 'refresh-dashboard',
@@ -148,6 +155,13 @@ export default class VaultCommanderPlugin extends Plugin {
       this.newNoteModal = new NewNoteModal(this);
     }
     this.newNoteModal.open();
+  }
+
+  private openImportModal(): void {
+    if (!this.importModal) {
+      this.importModal = new ImportModal(this);
+    }
+    this.importModal.open();
   }
 
   private openDispatchModal(): void {

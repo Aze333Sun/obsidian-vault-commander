@@ -201,6 +201,36 @@ export class NoteDispatcher {
     }
   }
 
+  async importNote(params: {
+    sourceVaultId: string;
+    sourceFile: string;
+    targetFolder: string;
+    fileName: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    const sourceVault = this.plugin.settings.vaults.find(v => v.id === params.sourceVaultId);
+    if (!sourceVault) return { success: false, error: '源库未找到' };
+
+    const hostConfig = this.plugin.scanner.getHostVaultConfig();
+    const targetPath = path.join(hostConfig.path, params.targetFolder, params.fileName);
+
+    try {
+      const sourceFullPath = path.join(sourceVault.path, params.sourceFile);
+      const content = await fs.promises.readFile(sourceFullPath, 'utf-8');
+      await fs.promises.mkdir(path.dirname(targetPath), { recursive: true });
+
+      try {
+        await fs.promises.access(targetPath);
+        return { success: false, error: '目标位置已存在同名文件' };
+      } catch { /* file doesn't exist, proceed */ }
+
+      await fs.promises.writeFile(targetPath, content, 'utf-8');
+      this.plugin.eventBus.emit('note:imported', { sourceVaultId: sourceVault.id, filePath: params.sourceFile });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
   async openVault(vaultId: string): Promise<void> {
     const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === vaultId);
     if (!vault) return;
