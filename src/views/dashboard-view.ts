@@ -71,6 +71,13 @@ export class DashboardView extends ItemView {
           const modal = new NotePreviewModal(this.plugin);
           modal.open(vaultId, filePath);
         },
+        onNewNote: () => {
+          if (!this.plugin.newNoteModal) {
+            const { NewNoteModal } = require('../modals/new-note-modal');
+            (this.plugin as any).newNoteModal = new NewNoteModal(this.plugin);
+          }
+          this.plugin.newNoteModal?.open();
+        },
         onSearch: () => {
           if (!this.plugin.searchModal) {
             const { SearchModal } = require('../modals/search-modal');
@@ -136,11 +143,16 @@ export class DashboardView extends ItemView {
       added7d: number;
     }> = [];
     const allRecent: any[] = [];
-    const allTags: Array<{ tag: string; count: number; vaultId: string }> = [];
+    const tagMap = new Map<string, { tag: string; count: number; vaultId: string }>();
     const allHealthData: HealthScore[] = [];
     const allSuggestions: Suggestion[] = [];
     const allTasks: TaskItem[] = [];
+    const embedData: Array<{
+      vaultId: string; vaultName: string;
+      images: number; audio: number; video: number; other: number; broken: number;
+    }> = [];
 
+    // Single pass: vaults, stats, recent, tasks, tags, health, embeds
     for (const [, snapshot] of snapshots) {
       const vaultConfig =
         snapshot.vaultId === HOST_VAULT_ID
@@ -158,46 +170,60 @@ export class DashboardView extends ItemView {
       });
 
       allStats.push({
-        vaultId: snapshot.vaultId,
-        vaultName,
-        totalNotes: snapshot.totalNotes,
-        totalFolders: snapshot.totalFolders,
+        vaultId: snapshot.vaultId, vaultName,
+        totalNotes: snapshot.totalNotes, totalFolders: snapshot.totalFolders,
         tagCount: Object.keys(snapshot.tags).length,
-        added24h: snapshot.stats.added24h,
-        added7d: snapshot.stats.added7d,
+        added24h: snapshot.stats.added24h, added7d: snapshot.stats.added7d,
       });
 
       allRecent.push(...snapshot.recentChanges);
 
       if (snapshot.tasks) {
-        for (const t of snapshot.tasks) {
-          allTasks.push({
-            ...t,
-            vaultName: vaultName,
-          });
-        }
+        for (const t of snapshot.tasks) allTasks.push({ ...t, vaultName });
       }
 
+      // Tags with Map dedup
       for (const [tag, count] of Object.entries(snapshot.tags as Record<string, number>)) {
-        allTags.push({ tag: String(tag), count: Number(count), vaultId: snapshot.vaultId });
+        const key = String(tag);
+        const existing = tagMap.get(key);
+        if (existing) existing.count += Number(count);
+        else tagMap.set(key, { tag: key, count: Number(count), vaultId: snapshot.vaultId });
       }
+
+      // Embeds inline
+      let emb = { images: 0, audio: 0, video: 0, other: 0, broken: 0 };
+      for (const c of snapshot.recentChanges) {
+        emb.images += c.embeds?.images ?? 0;
+        emb.audio += c.embeds?.audio ?? 0;
+        emb.video += c.embeds?.video ?? 0;
+        emb.other += c.embeds?.other ?? 0;
+        emb.broken += c.embeds?.broken ?? 0;
+      }
+      embedData.push({ vaultId: snapshot.vaultId, vaultName, ...emb });
 
       // Health score
       try {
         const healthScore = await this.plugin.analyzer.getHealthScore(snapshot);
         healthScore.vaultName = vaultName;
         allHealthData.push(healthScore);
-
-        const suggestions = await this.plugin.analyzer.getSuggestions(snapshot);
-        allSuggestions.push(...suggestions);
+        allSuggestions.push(...(await this.plugin.analyzer.getSuggestions(snapshot)));
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.plugin.debugLogger.addLog(
-          'error',
-          'dashboard',
-          `健康度计算失败 (${vaultName}): ${msg}`,
-          err,
-        );
+        this.plugin.debugLogger.addLog('error', 'dashboard', `健康度计算失败 (${vaultName}): ${msg}`, err);
+      }
+    }
+
+    // Sorted unique tags
+    const uniqueTags = [...tagMap.values()].sort((a, b) => b.count - a.count);
+
+    // Suggest plugin install for large external vaults
+    for (const [, snapshot] of snapshots) {
+      if (!snapshot.isHost && snapshot.totalNotes > 20) {
+        const vc = vaults.find((v: { id: string }) => v.id === snapshot.vaultId);
+        allSuggestions.push({
+          type: 'tip' as const,
+          message: `「${vc?.name ?? snapshot.vaultId}」有 ${snapshot.totalNotes} 篇笔记，建议在该库安装 Vault Commander 实现多级管理`,
+        });
       }
     }
 
@@ -214,39 +240,6 @@ export class DashboardView extends ItemView {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.plugin.debugLogger.addLog('error', 'dashboard', `标签分析失败: ${msg}`, err);
-    }
-
-    // Sort and deduplicate tags
-    allTags.sort((a, b) => b.count - a.count);
-    const uniqueTags = allTags.filter(
-      (t: { tag: string }, i: number, arr: Array<{ tag: string }>) =>
-        arr.findIndex((x) => x.tag === t.tag) === i,
-    );
-
-    // Embed reference data
-    const embedData: Array<{
-      vaultId: string;
-      vaultName: string;
-      images: number;
-      audio: number;
-      video: number;
-      other: number;
-      broken: number;
-    }> = [];
-    for (const [, snapshot] of snapshots) {
-      const vaultConfig = this.plugin.settings.vaults.find(
-        (v: { id: string }) => v.id === snapshot.vaultId,
-      );
-      const vaultName = vaultConfig?.name ?? snapshot.vaultId;
-      let embeds = { images: 0, audio: 0, video: 0, other: 0, broken: 0 };
-      for (const change of snapshot.recentChanges) {
-        embeds.images += change.embeds?.images ?? 0;
-        embeds.audio += change.embeds?.audio ?? 0;
-        embeds.video += change.embeds?.video ?? 0;
-        embeds.other += change.embeds?.other ?? 0;
-        embeds.broken += change.embeds?.broken ?? 0;
-      }
-      embedData.push({ vaultId: snapshot.vaultId, vaultName, ...embeds });
     }
 
     try {

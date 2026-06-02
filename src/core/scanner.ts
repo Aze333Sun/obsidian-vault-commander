@@ -9,7 +9,7 @@ import type { VaultSnapshot, NoteChange, TaskItem } from '../types/snapshot';
 const YAML_FRONT_RE = /^---\n([\s\S]*?)\n---/;
 const TAG_LINE_RE = /^tags?\s*:\s*(.+)$/im;
 const TAG_LIST_RE = /(?:^|\s)- (.+)/gm;
-const TASK_DUE_RE = /📅\s*(\d{4}-\d{2}-\d{2})/;
+const TASK_DUE_RE = /📅\s*(\d{4}-\d{2}-\d{2})/u;
 export const HOST_VAULT_ID = '__host__';
 
 function parseFrontmatter(raw: string): { title: string; tags: string[] } {
@@ -249,6 +249,18 @@ export class VaultScanner {
         }
       }
 
+      const fmTags2: string[] = [];
+      const rawFmTags2 = (metaCache?.frontmatter as Record<string, unknown> | undefined)?.tags;
+      if (Array.isArray(rawFmTags2)) {
+        for (const t of rawFmTags2) fmTags2.push(String(t));
+      } else if (typeof rawFmTags2 === 'string') {
+        fmTags2.push(rawFmTags2);
+      }
+      for (const t of fmTags2) {
+        const tagName = t.replace(/^#/, '');
+        snapshot.tags[tagName] = (snapshot.tags[tagName] || 0) + 1;
+      }
+
       // Detect changes vs previous snapshot
       const prevChange = prev.recentChanges.find(
         (c) => c.fileName === file.name && c.folder === dir,
@@ -347,7 +359,7 @@ export class VaultScanner {
           const changed = !prevMtime || stat.mtimeMs !== prevMtime;
 
           if (changed) {
-            const content = await readFileContent(fullPath, settings.scan.maxFileSize);
+            const content = await readFileContent(fullPath, settings.scan.maxFileSize, stat.size);
             const { title, tags: fileTags } = parseFrontmatter(content);
             const links = LinkParser.parse(content);
 
@@ -433,11 +445,25 @@ export class VaultScanner {
 
       const metaCache = app.metadataCache.getFileCache(file);
 
+      // Inline #tags
       if (metaCache?.tags) {
         for (const t of metaCache.tags) {
           const tagName = t.tag.replace(/^#/, '');
           snapshot.tags[tagName] = (snapshot.tags[tagName] || 0) + 1;
         }
+      }
+
+      // Frontmatter tags: tags: [a, b] or tags:\n  - a\n  - b
+      const fmTags: string[] = [];
+      const rawFmTags = (metaCache?.frontmatter as Record<string, unknown> | undefined)?.tags;
+      if (Array.isArray(rawFmTags)) {
+        for (const t of rawFmTags) fmTags.push(String(t));
+      } else if (typeof rawFmTags === 'string') {
+        fmTags.push(rawFmTags);
+      }
+      for (const t of fmTags) {
+        const tagName = t.replace(/^#/, '');
+        snapshot.tags[tagName] = (snapshot.tags[tagName] || 0) + 1;
       }
 
       snapshot.recentChanges.push({
@@ -530,7 +556,7 @@ export class VaultScanner {
             continue;
           }
 
-          const content = await readFileContent(fullPath, settings.scan.maxFileSize);
+          const content = await readFileContent(fullPath, settings.scan.maxFileSize, stat.size);
           const { title, tags: fileTags } = parseFrontmatter(content);
           const links = LinkParser.parse(content);
 
@@ -676,6 +702,7 @@ export class VaultScanner {
       }
 
       if (!tagNames.some((t) => t === 'task' || t === 'todo')) continue;
+      if (file.stat.size > this.plugin.settings.scan.maxFileSize) continue;
 
       try {
         const content = await app.vault.cachedRead(file);
@@ -853,17 +880,14 @@ function isScanTarget(
   return ext === '.md';
 }
 
-async function readFileContent(filePath: string, maxSize: number): Promise<string> {
+async function readFileContent(filePath: string, maxSize: number, knownSize?: number): Promise<string> {
   const fs = require('fs');
   try {
-    const stat = await fs.promises.stat(filePath);
-    if (stat.size > maxSize) return '';
+    const size = knownSize ?? (await fs.promises.stat(filePath)).size;
+    if (size > maxSize) return '';
 
-    const fd = await fs.promises.open(filePath, 'r');
-    const buffer = Buffer.alloc(Math.min(stat.size, 512 * 1024)); // Max 500KB
-    await fd.read(buffer, 0, buffer.length, 0);
-    await fd.close();
-    return buffer.toString('utf-8');
+    const buf = await fs.promises.readFile(filePath);
+    return buf.toString('utf-8', 0, Math.min(size, 512 * 1024));
   } catch {
     return '';
   }
@@ -897,13 +921,13 @@ function parseTasks(
 
     // Priority from emoji
     let priority = 0;
-    if (/🔺|⏫/.test(body)) priority = 3;
-    else if (/🔼/.test(body)) priority = 2;
-    else if (/🔽/.test(body)) priority = 1;
+    if (/🔺|⏫/u.test(body)) priority = 3;
+    else if (/🔼/u.test(body)) priority = 2;
+    else if (/🔽/u.test(body)) priority = 1;
 
     tasks.push({
       id: `${vaultId}::${fileName}::${lineNum}`,
-      title: body.replace(/[🔺⏫🔼🔽]\s*/g, '').replace(/\s*📅\s*\d{4}-\d{2}-\d{2}/, '').trim(),
+      title: body.replace(/[🔺⏫🔼🔽]\s*/gu, '').replace(/\s*📅\s*\d{4}-\d{2}-\d{2}/u, '').trim(),
       done,
       vaultId,
       vaultName,

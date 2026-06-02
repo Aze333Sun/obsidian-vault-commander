@@ -7,6 +7,7 @@
   import SuggestionList from './components/SuggestionList.svelte';
   import EmbedRefSection from './components/EmbedRefSection.svelte';
   import TaskSection from './components/TaskSection.svelte';
+  import WeeklyOverview from './components/WeeklyOverview.svelte';
   import DebugPanel from './components/DebugPanel.svelte';
   import Section from './shared/Section.svelte';
   import LoadingSpinner from './shared/LoadingSpinner.svelte';
@@ -47,6 +48,7 @@
   export let debugReport: DebugReport | null = null;
 
   export let onRefresh: () => void = () => {};
+  export let onNewNote: (() => void) | null = null;
   export let onOpenNote: (vaultId: string, filePath: string) => void = () => {};
   export let onSearch: () => void = () => {};
   export let onTagClick: (tag: string) => void = () => {};
@@ -73,19 +75,29 @@
 
   function selectVault(id: string) { activeVaultId = activeVaultId === id ? null : id; }
 
-  // --- Filtered data ---
-  $: activeStats = activeVaultId ? stats.filter(s => s.vaultId === activeVaultId) : stats;
-  $: activeChanges = activeVaultId ? recentChanges.filter(c => c.vaultId === activeVaultId) : recentChanges;
-  $: activeTasks = activeVaultId ? tasks.filter(t => t.vaultId === activeVaultId) : tasks;
-  $: activeHealth = activeVaultId ? healthData.filter(h => h.vaultId === activeVaultId) : healthData;
-  $: activeEmbed = activeVaultId ? embedData.filter(e => e.vaultId === activeVaultId) : embedData;
-  $: activeSuggestions = activeVaultId
-    ? suggestions.filter(s => !s.vaultId || s.vaultId === activeVaultId) : suggestions;
-  $: activeTags = (activeVaultId ? tagCloud.filter(t => t.vaultId === activeVaultId) : tagCloud).slice(0, 20);
+  // --- Filtered data (single reactive block) ---
+  let activeStats: typeof stats = [];
+  let activeChanges: typeof recentChanges = [];
+  let activeTasks: typeof tasks = [];
+  let activeHealth: typeof healthData = [];
+  let activeEmbed: typeof embedData = [];
+  let activeSuggestions: typeof suggestions = [];
+  let activeTags: typeof tagCloud = [];
+  let totalNotes = 0, totalFolders = 0, totalAdded = 0;
+  let wAdd24 = 0, wAdd30 = 0;
 
-  $: totalNotes = stats.reduce((sum, s) => sum + s.totalNotes, 0);
-  $: totalFolders = stats.reduce((sum, s) => sum + s.totalFolders, 0);
-  $: totalAdded = stats.reduce((sum, s) => sum + s.added7d, 0);
+  $: {
+    const vid = activeVaultId;
+    activeStats = vid ? stats.filter(s => s.vaultId === vid) : stats;
+    activeChanges = vid ? recentChanges.filter(c => c.vaultId === vid) : recentChanges;
+    activeTasks = vid ? tasks.filter(t => t.vaultId === vid) : tasks;
+    activeHealth = vid ? healthData.filter(h => h.vaultId === vid) : healthData;
+    activeEmbed = vid ? embedData.filter(e => e.vaultId === vid) : embedData;
+    activeSuggestions = vid ? suggestions.filter(s => !s.vaultId || s.vaultId === vid) : suggestions;
+    activeTags = (vid ? tagCloud.filter(t => t.vaultId === vid) : tagCloud).slice(0, 20);
+    totalNotes = 0; totalFolders = 0; totalAdded = 0; wAdd24 = 0; wAdd30 = 0;
+    for (const s of activeStats) { totalNotes += s.totalNotes; totalFolders += s.totalFolders; totalAdded += s.added7d; wAdd24 += s.added24h; wAdd30 += s.added30d; }
+  }
 
   $: cardStep = 24;
   $: cardAreaH = Math.max(80, 4 + Math.max(0, externalVaults.length - 1) * 4 + 100 + 8);
@@ -95,7 +107,7 @@
   $: debugEnabled = debugReport?.enabled ?? false;
 
   // --- Draggable slot layout ---
-  type SectionKey = 'stats' | 'tasks' | 'recent' | 'health' | 'suggestions' | 'embed' | 'otherVaults' | 'empty';
+  type SectionKey = 'stats' | 'tasks' | 'recent' | 'health' | 'suggestions' | 'embed' | 'otherVaults' | 'weekly' | 'empty';
 
   interface Slot {
     id: number;
@@ -107,15 +119,15 @@
     { id: 0, col: 0, key: 'stats' },
     { id: 1, col: 0, key: 'tasks' },
     { id: 2, col: 0, key: 'recent' },
-    { id: 3, col: 0, key: 'health' },
-    { id: 4, col: 0, key: 'suggestions' },
-    { id: 5, col: 0, key: 'embed' },
-    { id: 6, col: 0, key: 'otherVaults' },
+    { id: 3, col: 0, key: 'weekly' },
+    { id: 4, col: 0, key: 'empty' },
+    { id: 5, col: 0, key: 'empty' },
+    { id: 6, col: 0, key: 'empty' },
     { id: 7, col: 0, key: 'empty' },
-    { id: 8, col: 1, key: 'empty' },
-    { id: 9, col: 1, key: 'empty' },
-    { id: 10, col: 1, key: 'empty' },
-    { id: 11, col: 1, key: 'empty' },
+    { id: 8, col: 1, key: 'health' },
+    { id: 9, col: 1, key: 'suggestions' },
+    { id: 10, col: 1, key: 'embed' },
+    { id: 11, col: 1, key: 'otherVaults' },
     { id: 12, col: 1, key: 'empty' },
     { id: 13, col: 1, key: 'empty' },
     { id: 14, col: 1, key: 'empty' },
@@ -164,6 +176,7 @@
       case 'suggestions': return activeSuggestions.length > 0;
       case 'embed': return activeEmbed.length > 0;
       case 'otherVaults': return vaults.length > 1;
+      case 'weekly': return activeStats.length > 0;
       default: return false;
     }
   }
@@ -181,7 +194,7 @@
 
 <div class="vc-dashboard">
   <TopBar
-    onRefresh={onRefresh} onSearch={onSearch} {scanning}
+    onRefresh={onRefresh} onSearch={onSearch} {onNewNote} {scanning}
     hostName={hostVault?.name ?? ''}
     hostNotes={hostVault?.totalNotes ?? 0}
     showHealth={!!activeHealthData}
@@ -292,6 +305,10 @@
               <Section title="嵌入引用" defaultOpen={false}>
                 <EmbedRefSection embedData={activeEmbed} />
               </Section>
+            {:else if slot.key === 'weekly'}
+              <Section title="活跃动态">
+                <WeeklyOverview added24h={wAdd24} added7d={totalAdded} added30d={wAdd30} modified24h={0} modified7d={0} modified30d={0} />
+              </Section>
             {:else if slot.key === 'otherVaults'}
               <Section title="其他库概况" badge={sectionBadge('otherVaults')} defaultOpen={false}>
                 {#each stats.filter(s => s.vaultId !== activeVaultId) as s}
@@ -346,6 +363,10 @@
             {:else if slot.key === 'embed'}
               <Section title="嵌入引用" defaultOpen={false}>
                 <EmbedRefSection embedData={activeEmbed} />
+              </Section>
+            {:else if slot.key === 'weekly'}
+              <Section title="活跃动态">
+                <WeeklyOverview added24h={wAdd24} added7d={totalAdded} added30d={wAdd30} modified24h={0} modified7d={0} modified30d={0} />
               </Section>
             {:else if slot.key === 'otherVaults'}
               <Section title="其他库概况" badge={sectionBadge('otherVaults')} defaultOpen={false}>

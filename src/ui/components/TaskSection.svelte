@@ -29,10 +29,6 @@
   $: openCount = tasks.filter((t) => !t.done).length;
   $: doneCount = tasks.filter((t) => t.done).length;
 
-  function prio(color: string): string {
-    return `<span style="color:${color}">●</span>`;
-  }
-
   function fmtDue(d: string | null): string {
     if (!d) return '';
     const due = new Date(d);
@@ -135,6 +131,8 @@
     font-size: 13px;
     color: var(--text-normal);
     line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .vc-task.done .vc-task-title {
     text-decoration: line-through;
