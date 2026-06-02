@@ -8,7 +8,7 @@ import type { TaskItem } from '../types/snapshot';
 
 export class DashboardView extends ItemView {
   static VIEW_TYPE = 'vault-commander-dashboard';
-  static DISPLAY_TEXT = 'Vault Commander 控制台';
+  static DISPLAY_TEXT = '控制台';
   static ICON = 'gauge';
 
   private component: Dashboard | null = null;
@@ -227,7 +227,7 @@ export class DashboardView extends ItemView {
         const vc = vaults.find((v: { id: string }) => v.id === snapshot.vaultId);
         allSuggestions.push({
           type: 'tip' as const,
-          message: `「${vc?.name ?? snapshot.vaultId}」有 ${snapshot.totalNotes} 篇笔记，建议在该库安装 Vault Commander 实现多级管理`,
+          message: `「${vc?.name ?? snapshot.vaultId}」有 ${snapshot.totalNotes} 篇笔记，建议在该库安装「控制台」插件实现多级管理`,
         });
       }
     }

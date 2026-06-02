@@ -217,7 +217,7 @@
   {#if scanning}
     <LoadingSpinner message="正在扫描..." />
   {:else if vaults.length === 0}
-    <EmptyState title="欢迎使用 Vault Commander" description="请先在设置中添加你的分库路径。" />
+    <EmptyState title="欢迎使用控制台" description="请先在设置中添加你的分库路径。" />
   {:else}
     <!-- Cards + tags row -->
     {#if externalVaults.length > 0}

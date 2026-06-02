@@ -20,7 +20,7 @@
 <div class="vc-topbar">
   <div class="vc-topbar-left">
     <span class="vc-logo">◆</span>
-    <span class="vc-title">Vault Commander</span>
+    <span class="vc-title">控制台</span>
     {#if hostName}
       <button class="vc-host-badge" on:click={onOpenVault} title="点击查看当前库内容">
         {hostName} · {hostNotes}

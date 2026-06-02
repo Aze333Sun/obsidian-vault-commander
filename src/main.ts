@@ -41,6 +41,9 @@ export default class VaultCommanderPlugin extends Plugin {
 
     await this.loadSettings();
 
+    // 左边栏快捷图标
+    this.addRibbonIcon('gauge', '控制台', () => this.activateView());
+
     // 初始化调试日志（必须在其他模块之前）
     this.debugLogger = new DebugLogger();
     this.debugLogger.enabled = this.settings.ui.debug;
@@ -136,10 +139,10 @@ export default class VaultCommanderPlugin extends Plugin {
   async activateView(): Promise<void> {
     const { workspace } = this.app;
     const leaves = workspace.getLeavesOfType(DashboardView.VIEW_TYPE);
-    let leaf: ReturnType<typeof workspace.getRightLeaf> = leaves.first() ?? null;
+    let leaf = leaves.first() ?? null;
 
     if (!leaf) {
-      leaf = workspace.getRightLeaf(false);
+      leaf = workspace.getLeaf('tab');
       if (leaf) {
         await leaf.setViewState({ type: DashboardView.VIEW_TYPE, active: true });
       }

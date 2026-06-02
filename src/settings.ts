@@ -27,7 +27,7 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h1', { text: 'Vault Commander' });
+    containerEl.createEl('h1', { text: '控制台' });
 
     this.buildVaultListSection(containerEl);
     this.buildScanSettingsSection(containerEl);
