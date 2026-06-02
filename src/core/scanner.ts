@@ -4,11 +4,13 @@ import { LinkParser } from '../utils/link-parser';
 import { PathUtils } from '../utils/path';
 import type VaultCommanderPlugin from '../main';
 import type { VaultConfig } from '../types/settings';
-import type { VaultSnapshot, NoteChange } from '../types/snapshot';
+import type { VaultSnapshot, NoteChange, TaskItem } from '../types/snapshot';
 
 const YAML_FRONT_RE = /^---\n([\s\S]*?)\n---/;
 const TAG_LINE_RE = /^tags?\s*:\s*(.+)$/im;
 const TAG_LIST_RE = /(?:^|\s)- (.+)/gm;
+const TASK_DUE_RE = /📅\s*(\d{4}-\d{2}-\d{2})/;
+export const HOST_VAULT_ID = '__host__';
 
 function parseFrontmatter(raw: string): { title: string; tags: string[] } {
   const match = raw.match(YAML_FRONT_RE);
@@ -75,27 +77,37 @@ export class VaultScanner {
     this.abortController = new AbortController();
     this.perf.start('scan:phase1');
 
-    const vaults = this.plugin.settings.vaults.filter((v: VaultConfig) => v.isEnabled);
+    const configs = this.plugin.settings.vaults.filter((v: VaultConfig) => v.isEnabled);
+    const hostConfig = this.getHostVaultConfig();
+    const hostIsConfigured = configs.some((v) => PathUtils.normalize(v.path) === PathUtils.normalize(hostConfig.path));
+    const allVaults = [...configs];
+    if (!hostIsConfigured) {
+      allVaults.push(hostConfig);
+    }
 
     this.plugin.eventBus.emit('scan:start', {
-      vaultIds: vaults.map((v: VaultConfig) => v.id),
+      vaultIds: allVaults.map((v: VaultConfig) => v.id),
     });
 
     const results = new Map<string, VaultSnapshot>();
 
-    for (let i = 0; i < vaults.length; i++) {
+    for (let i = 0; i < allVaults.length; i++) {
       if (this.abortController.signal.aborted) break;
 
-      const config = vaults[i];
+      const config = allVaults[i];
       this.plugin.eventBus.emit('scan:progress', {
         vaultId: config.id,
-        progress: Math.round((i / vaults.length) * 100),
+        progress: Math.round((i / allVaults.length) * 100),
         message: `正在扫描: ${config.name}`,
       });
 
       try {
         const snapshot = await this.scanVault(config);
         if (snapshot) {
+          // 标记宿主库
+          if (config.id === HOST_VAULT_ID) {
+            snapshot.isHost = true;
+          }
           results.set(config.id, snapshot);
           await this.cache.setSnapshot(config.id, snapshot);
         }
@@ -130,15 +142,24 @@ export class VaultScanner {
     this.perf.start('scan:incremental');
 
     const results = new Map<string, VaultSnapshot>();
-    const vaults = this.plugin.settings.vaults.filter((v: VaultConfig) => v.isEnabled);
+    const configs = this.plugin.settings.vaults.filter((v: VaultConfig) => v.isEnabled);
+    const hostConfig = this.getHostVaultConfig();
+    const hostIsConfigured = configs.some((v) => PathUtils.normalize(v.path) === PathUtils.normalize(hostConfig.path));
+    const allVaults = [...configs];
+    if (!hostIsConfigured) {
+      allVaults.push(hostConfig);
+    }
 
-    for (const config of vaults) {
+    for (const config of allVaults) {
       if (this.abortController.signal.aborted) break;
 
       try {
         const prevSnapshot = this.cache.getSnapshot(config.id);
         const snapshot = await this.scanVaultIncremental(config, prevSnapshot);
         if (snapshot) {
+          if (config.id === HOST_VAULT_ID) {
+            snapshot.isHost = true;
+          }
           results.set(config.id, snapshot);
           await this.cache.setSnapshot(config.id, snapshot);
         }
@@ -241,6 +262,7 @@ export class VaultScanner {
     }
 
     snapshot.recentChanges.sort((a, b) => b.mtime - a.mtime);
+    snapshot.tasks = await this.extractHostVaultTasks(config);
 
     return snapshot;
   }
@@ -249,8 +271,8 @@ export class VaultScanner {
     config: VaultConfig,
     prev: VaultSnapshot,
   ): Promise<VaultSnapshot> {
-    const fs = await import('fs');
-    const nodePath = await import('path');
+    const fs = require('fs');
+    const nodePath = require('path');
     const settings = this.plugin.settings;
 
     const snapshot = this.createEmptySnapshot(config.id);
@@ -307,6 +329,15 @@ export class VaultScanner {
 
             for (const t of fileTags) {
               snapshot.tags[t] = (snapshot.tags[t] || 0) + 1;
+            }
+
+            const hasTaskTag2 = fileTags.some((t: string) => {
+              const lower = t.toLowerCase();
+              return lower === 'task' || lower === 'todo';
+            });
+            if (hasTaskTag2 && /\[[ x]\]/.test(content)) {
+              const fileTasks = parseTasks(content, config.id, config.name, relPath);
+              snapshot.tasks.push(...fileTasks);
             }
 
             snapshot.recentChanges.push({
@@ -406,13 +437,14 @@ export class VaultScanner {
     snapshot.totalFolders = folderSet.size;
     snapshot.recentChanges.sort((a, b) => b.mtime - a.mtime);
     this.computeSnapshotStats(snapshot);
+    snapshot.tasks = await this.extractHostVaultTasks(config);
 
     return snapshot;
   }
 
   private async scanExternalVault(config: VaultConfig): Promise<VaultSnapshot> {
-    const fs = await import('fs');
-    const nodePath = await import('path');
+    const fs = require('fs');
+    const nodePath = require('path');
     const settings = this.plugin.settings;
 
     const snapshot = this.createEmptySnapshot(config.id);
@@ -486,6 +518,16 @@ export class VaultScanner {
           snapshot.notesByFolder[relDir] = (snapshot.notesByFolder[relDir] || 0) + 1;
           snapshot.totalNotes++;
 
+          // 只解析带 task/todo 标签的文件中的任务
+          const hasTaskTag = fileTags.some((t: string) => {
+            const lower = t.toLowerCase();
+            return lower === 'task' || lower === 'todo';
+          });
+          if (hasTaskTag && /\[[ x]\]/.test(content)) {
+            const fileTasks = parseTasks(content, config.id, config.name, relPath);
+            snapshot.tasks.push(...fileTasks);
+          }
+
           snapshot.recentChanges.push({
             vaultId: config.id,
             fileName: relPath,
@@ -550,6 +592,21 @@ export class VaultScanner {
 
   // ─── 查询方法 ─────────────────────────────────────
 
+  getHostVaultConfig(): VaultConfig {
+    const adapter = this.plugin.app.vault.adapter as unknown as { basePath: string };
+    const basePath = adapter.basePath || '';
+    const name = basePath.split(/[/\\]/).filter(Boolean).pop() || '当前库';
+
+    return {
+      id: HOST_VAULT_ID,
+      name,
+      path: basePath,
+      addedAt: 0,
+      isEnabled: true,
+      ignorePatterns: [],
+    };
+  }
+
   getSnapshot(vaultId: string): VaultSnapshot | null {
     return this.cache.getSnapshot(vaultId);
   }
@@ -564,6 +621,50 @@ export class VaultScanner {
 
   destroy(): void {
     this.stopAutoScan();
+  }
+
+  // ─── 任务提取 ─────────────────────────────────────
+
+  private async extractHostVaultTasks(config: VaultConfig): Promise<TaskItem[]> {
+    const { app } = this.plugin;
+    const markdownFiles = app.vault.getMarkdownFiles();
+    const tasks: TaskItem[] = [];
+    const vaultName = config.name;
+
+    for (const file of markdownFiles) {
+      if (this.abortController?.signal.aborted) break;
+
+      // 只处理带 task/todo 标签的文件
+      const meta = app.metadataCache.getFileCache(file);
+      if (!meta) continue;
+
+      const tagNames: string[] = [];
+      if (meta.tags) {
+        for (const t of meta.tags) {
+          tagNames.push(t.tag.replace(/^#/, '').toLowerCase());
+        }
+      }
+      if (meta.frontmatter?.tags) {
+        const fmTags = Array.isArray(meta.frontmatter.tags) ? meta.frontmatter.tags : [meta.frontmatter.tags];
+        for (const t of fmTags) {
+          tagNames.push(String(t).toLowerCase());
+        }
+      }
+
+      if (!tagNames.some((t) => t === 'task' || t === 'todo')) continue;
+
+      try {
+        const content = await app.vault.cachedRead(file);
+        if (/\[[ x]\]/.test(content)) {
+          const fileTasks = parseTasks(content, config.id, vaultName, file.path);
+          tasks.push(...fileTasks);
+        }
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+
+    return tasks;
   }
 
   // ─── 内部工具 ─────────────────────────────────────
@@ -592,6 +693,7 @@ export class VaultScanner {
         brokenEmbeds: 0,
         lastWeekActiveDays: 7,
       },
+      tasks: [],
     };
   }
 
@@ -728,7 +830,7 @@ function isScanTarget(
 }
 
 async function readFileContent(filePath: string, maxSize: number): Promise<string> {
-  const fs = await import('fs');
+  const fs = require('fs');
   try {
     const stat = await fs.promises.stat(filePath);
     if (stat.size > maxSize) return '';
@@ -741,6 +843,54 @@ async function readFileContent(filePath: string, maxSize: number): Promise<strin
   } catch {
     return '';
   }
+}
+
+function parseTasks(
+  content: string,
+  vaultId: string,
+  vaultName: string,
+  fileName: string,
+): TaskItem[] {
+  const tasks: TaskItem[] = [];
+  let lineNum = 0;
+
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = line.match(/^[\t ]*[-*]\s*\[(.)\]\s*(.+)$/);
+    if (!m) {
+      if (line.trim() !== '') lineNum++;
+      continue;
+    }
+
+    lineNum++;
+    const done = m[1].toLowerCase() === 'x';
+    const body = m[2].trim();
+
+    // Extract due date
+    const dueMatch = body.match(TASK_DUE_RE);
+    const dueDate = dueMatch ? dueMatch[1] : null;
+
+    // Priority from emoji
+    let priority = 0;
+    if (/🔺|⏫/.test(body)) priority = 3;
+    else if (/🔼/.test(body)) priority = 2;
+    else if (/🔽/.test(body)) priority = 1;
+
+    tasks.push({
+      id: `${vaultId}::${fileName}::${lineNum}`,
+      title: body.replace(/[🔺⏫🔼🔽]\s*/g, '').replace(/\s*📅\s*\d{4}-\d{2}-\d{2}/, '').trim(),
+      done,
+      vaultId,
+      vaultName,
+      fileName,
+      line: lineNum,
+      priority,
+      dueDate,
+    });
+  }
+
+  return tasks;
 }
 
 function countWords(text: string): number {

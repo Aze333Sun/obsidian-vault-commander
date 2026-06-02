@@ -467,6 +467,25 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
         }),
       );
 
+    // 调试模式
+    new Setting(container)
+      .setName('调试模式')
+      .setDesc('在仪表盘底部显示调试面板，包含事件日志、扫描状态、错误信息等')
+      .addToggle((toggle) =>
+        toggle.setValue(this.plugin.settings.ui.debug).onChange(async (value) => {
+          this.plugin.settings.ui.debug = value;
+          await this.plugin.saveSettings();
+          // 动态启用/禁用调试日志
+          if (value) {
+            this.plugin.debugLogger.enabled = true;
+            this.plugin.debugLogger.captureConsole();
+          } else {
+            this.plugin.debugLogger.enabled = false;
+            this.plugin.debugLogger.releaseConsole();
+          }
+        }),
+      );
+
     // 搜索历史管理
     const historyCount = this.plugin.settings.ui.searchHistory.length;
     new Setting(container)

@@ -1,36 +1,31 @@
 <script lang="ts">
-  export let title: string = 'Vault Commander';
   export let onRefresh: (() => void) | null = null;
-  export let onSearch: ((query: string) => void) | null = null;
+  export let onSearch: (() => void) | null = null;
   export let scanning: boolean = false;
-
-  let searchQuery: string = '';
+  export let hostName: string = '';
+  export let hostNotes: number = 0;
+  export let onOpenVault: (() => void) | null = null;
 </script>
 
 <div class="vc-topbar">
-  <div class="vc-topbar-title">{title}</div>
-  <div class="vc-topbar-actions">
+  <div class="vc-topbar-left">
+    <span class="vc-logo">◆</span>
+    <span class="vc-title">Vault Commander</span>
+    {#if hostName}
+      <button class="vc-host-badge" on:click={onOpenVault} title="点击查看当前库内容">
+        {hostName} · {hostNotes}
+      </button>
+    {/if}
+  </div>
+  <div class="vc-actions">
     {#if onSearch}
-      <input
-        class="vc-topbar-search"
-        type="text"
-        placeholder="搜索笔记..."
-        bind:value={searchQuery}
-        on:keydown={(e) => {
-          if (e.key === 'Enter' && searchQuery.trim()) {
-            onSearch(searchQuery.trim());
-          }
-        }}
-      />
+      <button class="vc-icon-btn" on:click={onSearch} title="跨库搜索 (Ctrl+Shift+F)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
     {/if}
     {#if onRefresh}
-      <button
-        class="vc-button vc-topbar-btn"
-        on:click={onRefresh}
-        disabled={scanning}
-        title="刷新"
-      >
-        {scanning ? '扫描中...' : '刷新'}
+      <button class="vc-icon-btn" on:click={onRefresh} disabled={scanning} title="刷新扫描">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       </button>
     {/if}
   </div>
@@ -41,34 +36,31 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--size-4-2) var(--size-4-3);
-    border-bottom: 1px solid var(--background-modifier-border);
+    padding: 8px 14px;
     background: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
   }
-  .vc-topbar-title {
-    font-size: var(--font-ui-medium);
-    font-weight: 600;
-    color: var(--text-normal);
+  .vc-topbar-left {
+    display: flex; align-items: center; gap: 10px;
   }
-  .vc-topbar-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--size-4-1);
-  }
-  .vc-topbar-search {
-    padding: 4px 8px;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-s);
+  .vc-logo { font-size: 14px; color: var(--interactive-accent); }
+  .vc-title { font-size: 14px; font-weight: 600; color: var(--text-normal); }
+  .vc-host-badge {
+    font-size: 11px; font-weight: 500; color: var(--text-muted);
     background: var(--background-primary);
-    color: var(--text-normal);
-    font-size: var(--font-small);
-    width: 200px;
+    padding: 3px 10px; border-radius: 10px;
+    border: 1px solid var(--background-modifier-border);
+    cursor: pointer; white-space: nowrap;
+    font-family: var(--font-interface);
   }
-  .vc-topbar-search:focus {
-    border-color: var(--interactive-accent);
-    outline: none;
+  .vc-host-badge:hover { border-color: var(--interactive-accent); color: var(--text-normal); }
+  .vc-actions { display: flex; align-items: center; gap: 2px; }
+  .vc-icon-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; padding: 0;
+    background: none; border: none; border-radius: 6px;
+    color: var(--text-muted); cursor: pointer;
   }
-  .vc-topbar-btn {
-    font-size: var(--font-small);
-  }
+  .vc-icon-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
 </style>

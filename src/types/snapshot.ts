@@ -1,3 +1,15 @@
+export interface TaskItem {
+  id: string;
+  title: string;
+  done: boolean;
+  vaultId: string;
+  vaultName: string;
+  fileName: string;
+  line: number;
+  priority: number; // 0 = none, 1-3
+  dueDate: string | null; // YYYY-MM-DD
+}
+
 export interface VaultSnapshot {
   vaultId: string;
   scannedAt: number;
@@ -6,8 +18,10 @@ export interface VaultSnapshot {
   notesByFolder: Record<string, number>;
   tags: Record<string, number>;
   recentChanges: NoteChange[];
+  tasks: TaskItem[];
   stats: VaultStats;
   health: HealthIndicators;
+  isHost?: boolean;
 }
 
 export interface VaultStats {

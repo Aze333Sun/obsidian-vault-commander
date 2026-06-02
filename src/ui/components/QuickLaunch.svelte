@@ -1,77 +1,80 @@
 <script lang="ts">
   export let vaults: Array<{
-    id: string;
-    name: string;
-    path: string;
-    totalNotes: number;
+    id: string; name: string; path: string; totalNotes: number; isHost: boolean;
   }> = [];
   export let onOpenVault: (vaultId: string) => void = () => {};
 </script>
 
-<div class="vc-quicklaunch">
-  <h3 class="vc-section-title">快速启动</h3>
-  {#if vaults.length === 0}
-    <p class="vc-muted">暂无分库</p>
-  {:else}
-    <div class="vc-quicklaunch-grid">
-      {#each vaults as vault}
-        <button
-          class="vc-quicklaunch-item"
-          on:click={() => onOpenVault(vault.id)}
-          title={vault.path}
-        >
-          <span class="vc-quicklaunch-name">{vault.name}</span>
-          <span class="vc-quicklaunch-count">{vault.totalNotes} 笔记</span>
-        </button>
-      {/each}
-    </div>
-  {/if}
+<div class="vc-launch">
+  <div class="vc-launch-grid">
+    {#each vaults as vault}
+      <button
+        class="vc-launch-card"
+        class:is-host={vault.isHost}
+        on:click={() => onOpenVault(vault.id)}
+        title={vault.path}
+      >
+        <div class="vc-launch-icon">{vault.isHost ? '◆' : '◇'}</div>
+        <div class="vc-launch-info">
+          <span class="vc-launch-name">{vault.name}</span>
+          <span class="vc-launch-meta">{vault.totalNotes} 篇笔记</span>
+        </div>
+      </button>
+    {/each}
+  </div>
 </div>
 
 <style>
-  .vc-quicklaunch {
-    margin-bottom: var(--size-4-3);
+  .vc-launch {
+    margin-bottom: 14px;
   }
-  .vc-section-title {
-    font-size: var(--font-ui-small);
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0 0 var(--size-4-1);
-  }
-  .vc-quicklaunch-grid {
+  .vc-launch-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: var(--size-4-1);
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
   }
-  .vc-quicklaunch-item {
+  .vc-launch-card {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding: var(--size-4-2);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: var(--radius-m);
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
     background: var(--background-secondary);
+    border: 1px solid transparent;
+    border-radius: 10px;
     cursor: pointer;
     text-align: left;
-    transition: border-color 0.15s ease;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .vc-quicklaunch-item:hover {
+  .vc-launch-card:hover {
+    background: var(--background-primary);
     border-color: var(--interactive-accent);
   }
-  .vc-quicklaunch-name {
-    font-size: var(--font-ui-small);
-    font-weight: 500;
+  .vc-launch-card.is-host {
+    border-color: var(--interactive-accent);
+    background: var(--background-primary);
+  }
+  .vc-launch-icon {
+    font-size: 20px;
+    color: var(--interactive-accent);
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .vc-launch-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .vc-launch-name {
+    font-size: 13px;
+    font-weight: 600;
     color: var(--text-normal);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .vc-quicklaunch-count {
-    font-size: var(--font-smallest);
-    color: var(--text-muted);
-  }
-  .vc-muted {
-    color: var(--text-muted);
-    font-size: var(--font-small);
-    margin: 0;
+  .vc-launch-meta {
+    font-size: 11px;
+    color: var(--text-faint);
   }
 </style>

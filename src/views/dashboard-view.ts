@@ -1,7 +1,10 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 import Dashboard from '../ui/Dashboard.svelte';
+import { HOST_VAULT_ID } from '../core/scanner';
+import { NotePreviewModal } from '../modals/preview-modal';
 import type VaultCommanderPlugin from '../main';
 import type { HealthScore, Suggestion } from '../types/analyzer';
+import type { TaskItem } from '../types/snapshot';
 
 export class DashboardView extends ItemView {
   static VIEW_TYPE = 'vault-commander-dashboard';
@@ -32,6 +35,7 @@ export class DashboardView extends ItemView {
   async onOpen(): Promise<void> {
     this.mountSvelteComponent();
     this.registerEventListeners();
+    this.pushDebugReport();
   }
 
   async onClose(): Promise<void> {
@@ -55,15 +59,19 @@ export class DashboardView extends ItemView {
         embedData: [],
         scanning: false,
         error: null,
+        debugReport: null,
+        onToggleDebug: () => this.toggleDebug(),
+        tasks: [],
+        onClearDebugLogs: () => this.clearDebugLogs(),
+        onOpenTask: (vaultId: string, fileName: string, line: number) =>
+          this.openTask(vaultId, fileName, line),
+        onToggleTask: (task: TaskItem) => this.toggleTask(task),
         onRefresh: () => this.plugin.scanner.refresh(),
         onOpenNote: (vaultId: string, filePath: string) => {
-          const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === vaultId);
-          if (vault) {
-            this.plugin.dispatcher.jumpToNote(vault, filePath);
-          }
+          const modal = new NotePreviewModal(this.plugin);
+          modal.open(vaultId, filePath);
         },
-        onOpenVault: (vaultId: string) => this.plugin.dispatcher.openVault(vaultId),
-        onSearch: (_query: string) => {
+        onSearch: () => {
           if (!this.plugin.searchModal) {
             const { SearchModal } = require('../modals/search-modal');
             (this.plugin as any).searchModal = new SearchModal(this.plugin);
@@ -86,12 +94,37 @@ export class DashboardView extends ItemView {
     this.component = null;
   }
 
+  private pushDebugReport(): void {
+    try {
+      this.component?.$set({ debugReport: this.plugin.debugLogger.getReport() });
+    } catch {
+      // Debug report push failure is non-critical
+    }
+  }
+
   private async updateDashboard(snapshots: Map<string, any>): Promise<void> {
+    // 更新调试快照信息
+    this.plugin.debugLogger.updateSnapshotInfo(
+      new Map(
+        Array.from(snapshots.entries()).map(([id, s]) => [
+          id,
+          { totalNotes: s.totalNotes, scannedAt: s.scannedAt },
+        ]),
+      ),
+    );
+
+    this.plugin.debugLogger.addLog(
+      'debug',
+      'dashboard',
+      `更新仪表盘: ${snapshots.size} 个快照`,
+    );
+
     const vaults: Array<{
       id: string;
       name: string;
       path: string;
       totalNotes: number;
+      isHost: boolean;
     }> = [];
     const allStats: Array<{
       vaultId: string;
@@ -106,20 +139,22 @@ export class DashboardView extends ItemView {
     const allTags: Array<{ tag: string; count: number }> = [];
     const allHealthData: HealthScore[] = [];
     const allSuggestions: Suggestion[] = [];
-
-    const typedSnapshots = new Map<string, any>(snapshots);
+    const allTasks: TaskItem[] = [];
 
     for (const [, snapshot] of snapshots) {
-      const vaultConfig = this.plugin.settings.vaults.find(
-        (v: { id: string }) => v.id === snapshot.vaultId,
-      );
+      const vaultConfig =
+        snapshot.vaultId === HOST_VAULT_ID
+          ? this.plugin.scanner.getHostVaultConfig()
+          : this.plugin.settings.vaults.find((v: { id: string }) => v.id === snapshot.vaultId);
       const vaultName = vaultConfig?.name ?? snapshot.vaultId;
+      const isHost = snapshot.vaultId === HOST_VAULT_ID || !!snapshot.isHost;
 
       vaults.push({
         id: snapshot.vaultId,
-        name: vaultName,
+        name: isHost ? `${vaultName} (当前库)` : vaultName,
         path: vaultConfig?.path ?? '',
         totalNotes: snapshot.totalNotes,
+        isHost,
       });
 
       allStats.push({
@@ -134,6 +169,15 @@ export class DashboardView extends ItemView {
 
       allRecent.push(...snapshot.recentChanges);
 
+      if (snapshot.tasks) {
+        for (const t of snapshot.tasks) {
+          allTasks.push({
+            ...t,
+            vaultName: vaultName,
+          });
+        }
+      }
+
       for (const [tag, count] of Object.entries(snapshot.tags as Record<string, number>)) {
         allTags.push({ tag: String(tag), count: Number(count) });
       }
@@ -144,26 +188,32 @@ export class DashboardView extends ItemView {
         healthScore.vaultName = vaultName;
         allHealthData.push(healthScore);
 
-        // Suggestions
         const suggestions = await this.plugin.analyzer.getSuggestions(snapshot);
         allSuggestions.push(...suggestions);
-      } catch {
-        // Skip health computation for this vault
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.plugin.debugLogger.addLog(
+          'error',
+          'dashboard',
+          `健康度计算失败 (${vaultName}): ${msg}`,
+          err,
+        );
       }
     }
 
     // Tag analysis for cross-vault overlap
+    const typedSnapshots = new Map<string, any>(snapshots);
     try {
       const tagAnalysis = await this.plugin.analyzer.getTagAnalysis(typedSnapshots);
-      // Add cross-vault tag info to suggestions
       if (tagAnalysis.overlap.length > 0) {
         allSuggestions.push({
           type: 'info' as const,
           message: `${tagAnalysis.overlap.length} 个标签跨库共用`,
         });
       }
-    } catch {
-      // Skip tag analysis
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.plugin.debugLogger.addLog('error', 'dashboard', `标签分析失败: ${msg}`, err);
     }
 
     // Sort and deduplicate tags
@@ -199,22 +249,36 @@ export class DashboardView extends ItemView {
       embedData.push({ vaultId: snapshot.vaultId, vaultName, ...embeds });
     }
 
-    this.component?.$set({
-      scanning: false,
-      vaults,
-      stats: allStats,
-      recentChanges: allRecent.slice(0, this.plugin.settings.ui.maxRecentItems),
-      tagCloud: uniqueTags.slice(0, 50),
-      healthData: allHealthData,
-      suggestions: allSuggestions,
-      embedData,
-    });
+    try {
+      this.component?.$set({
+        scanning: false,
+        vaults,
+        stats: allStats,
+        recentChanges: allRecent.slice(0, this.plugin.settings.ui.maxRecentItems),
+        tagCloud: uniqueTags.slice(0, 50),
+        healthData: allHealthData,
+        suggestions: allSuggestions,
+        tasks: allTasks,
+        embedData,
+      });
+      this.plugin.debugLogger.addLog('debug', 'dashboard', '$set 完成');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.plugin.debugLogger.addLog('error', 'dashboard', `$set 失败: ${msg}`, err);
+    }
+
+    // 推送最新调试报告
+    this.pushDebugReport();
   }
 
   private registerEventListeners(): void {
     this.eventCleanups = [
       this.plugin.eventBus.on('scan:start', () => {
-        this.component?.$set({ scanning: true, error: null });
+        try {
+          this.component?.$set({ scanning: true, error: null });
+        } catch (err) {
+          this.plugin.debugLogger.addLog('error', 'dashboard', `$set(scanning) 失败: ${String(err)}`);
+        }
       }),
 
       this.plugin.eventBus.on('scan:complete', ({ snapshots }) => {
@@ -222,15 +286,72 @@ export class DashboardView extends ItemView {
       }),
 
       this.plugin.eventBus.on('scan:error', ({ vaultId, error }) => {
-        this.component?.$set({
-          scanning: false,
-          error: `扫描库 ${vaultId} 失败: ${error.message}`,
-        });
+        try {
+          this.component?.$set({
+            scanning: false,
+            error: `扫描库 ${vaultId} 失败: ${error.message}`,
+          });
+        } catch (err) {
+          this.plugin.debugLogger.addLog('error', 'dashboard', `$set(error) 失败: ${String(err)}`);
+        }
+        this.pushDebugReport();
       }),
     ];
   }
 
   async refresh(): Promise<void> {
     await this.plugin.scanner.refresh();
+  }
+
+  private openTask(vaultId: string, fileName: string, _line: number): void {
+    const modal = new NotePreviewModal(this.plugin);
+    modal.open(vaultId, fileName);
+  }
+
+  private async toggleTask(task: TaskItem): Promise<void> {
+    const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === task.vaultId)
+      || (task.vaultId === HOST_VAULT_ID ? this.plugin.scanner.getHostVaultConfig() : null);
+    if (!vault) return;
+
+    try {
+      const fs = require('fs');
+      const nodePath = require('path');
+      const fullPath = nodePath.join(vault.path, task.fileName);
+      let content = await fs.promises.readFile(fullPath, 'utf-8');
+      const lines = content.split('\n');
+      const lineIdx = task.line - 1;
+
+      if (lineIdx >= 0 && lineIdx < lines.length) {
+        const line = lines[lineIdx];
+        if (task.done) {
+          lines[lineIdx] = line.replace(/\[[xX]\]/, '[ ]');
+        } else {
+          lines[lineIdx] = line.replace(/\[ \]/, '[x]');
+        }
+        await fs.promises.writeFile(fullPath, lines.join('\n'), 'utf-8');
+        // Trigger re-scan
+        this.plugin.scanner.scanIncremental();
+      }
+    } catch (err) {
+      this.plugin.debugLogger.addLog('error', 'task', `切换任务状态失败: ${String(err)}`);
+    }
+  }
+
+  private clearDebugLogs(): void {
+    this.plugin.debugLogger.clear();
+    this.pushDebugReport();
+  }
+
+  private toggleDebug(): void {
+    const dl = this.plugin.debugLogger;
+    dl.enabled = !dl.enabled;
+    if (dl.enabled) {
+      dl.captureConsole();
+    } else {
+      dl.releaseConsole();
+    }
+    this.plugin.settings.ui.debug = dl.enabled;
+    this.plugin.saveSettings();
+    this.pushDebugReport();
   }
 }

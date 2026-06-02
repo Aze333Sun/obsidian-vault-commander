@@ -9,7 +9,9 @@ import { InsightsAnalyzer } from './core/analyzer';
 import { EventBus } from './core/event-bus';
 import { CrossVaultFileSystem } from './utils/file';
 import { PerformanceMonitor } from './utils/performance';
+import { DebugLogger } from './utils/debug-logger';
 import { SearchModal } from './modals/search-modal';
+import { DispatchModal } from './modals/dispatch-modal';
 import { NewNoteModal } from './modals/new-note-modal';
 import { DEFAULT_SETTINGS } from './constants';
 import type { PluginSettings } from './types/settings';
@@ -24,16 +26,25 @@ export default class VaultCommanderPlugin extends Plugin {
   analyzer!: InsightsAnalyzer;
   perf!: PerformanceMonitor;
   fileSystem!: CrossVaultFileSystem;
+  debugLogger!: DebugLogger;
 
   dashboardView: DashboardView | null = null;
   settingsTab: VaultCommanderSettingTab | null = null;
   searchModal: SearchModal | null = null;
+  dispatchModal: DispatchModal | null = null;
   newNoteModal: NewNoteModal | null = null;
 
   async onload(): Promise<void> {
     console.log('[Vault Commander] 加载中...');
 
     await this.loadSettings();
+
+    // 初始化调试日志（必须在其他模块之前）
+    this.debugLogger = new DebugLogger();
+    this.debugLogger.enabled = this.settings.ui.debug;
+    if (this.debugLogger.enabled) {
+      this.debugLogger.captureConsole();
+    }
 
     this.eventBus = new EventBus();
     this.perf = new PerformanceMonitor();
@@ -69,6 +80,11 @@ export default class VaultCommanderPlugin extends Plugin {
       callback: () => this.openSearchModal(),
     });
     this.addCommand({
+      id: 'dispatch-note',
+      name: '分发当前笔记到其他库',
+      callback: () => this.openDispatchModal(),
+    });
+    this.addCommand({
       id: 'refresh-dashboard',
       name: '刷新仪表盘',
       callback: () => this.scanner.refresh(),
@@ -95,6 +111,7 @@ export default class VaultCommanderPlugin extends Plugin {
     this.searchEngine?.destroy();
     await this.cache?.flush();
     this.eventBus?.clear();
+    this.debugLogger?.releaseConsole();
     this.app.workspace.detachLeavesOfType(DashboardView.VIEW_TYPE);
     console.log('[Vault Commander] 已卸载');
   }
@@ -106,6 +123,7 @@ export default class VaultCommanderPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+    this.debugLogger.updateVaultConfigs(this.settings.vaults);
   }
 
   async activateView(): Promise<void> {
@@ -132,6 +150,13 @@ export default class VaultCommanderPlugin extends Plugin {
     this.newNoteModal.open();
   }
 
+  private openDispatchModal(): void {
+    if (!this.dispatchModal) {
+      this.dispatchModal = new DispatchModal(this);
+    }
+    this.dispatchModal.open();
+  }
+
   private openSearchModal(): void {
     if (!this.searchModal) {
       this.searchModal = new SearchModal(this);
@@ -149,14 +174,46 @@ export default class VaultCommanderPlugin extends Plugin {
     this.eventBus.on('scan:complete', ({ snapshots }) => {
       this.searchEngine.buildIndex(snapshots, this.settings.vaults);
     });
+
+    // 分库管理事件 — 自动触发扫描
+    this.eventBus.on('vault:added', () => {
+      this.debugLogger.addLog('debug', 'main', '分库已添加，开始扫描...');
+      this.scanner.scanAll();
+    });
+
+    this.eventBus.on('vault:removed', () => {
+      this.debugLogger.addLog('debug', 'main', '分库已移除，重新扫描...');
+      this.scanner.scanAll();
+    });
+
+    this.eventBus.on('vault:updated', () => {
+      this.debugLogger.addLog('debug', 'main', '分库配置已更新，重新扫描...');
+      this.scanner.scanAll();
+    });
+
+    // 追踪所有事件到调试日志
+    const trackEvents = [
+      'scan:start', 'scan:complete', 'scan:error', 'scan:progress',
+      'vault:added', 'vault:removed', 'vault:updated',
+      'search:start', 'search:complete',
+      'note:created', 'note:dispatched',
+      'cache:updated', 'cache:cleared',
+    ];
+    for (const evt of trackEvents) {
+      this.eventBus.on(evt, (payload: unknown) => {
+        this.debugLogger.trackEvent(evt, payload);
+      });
+    }
   }
 
   async safeExecute<T>(operation: () => Promise<T>, fallback: T, errorMessage: string): Promise<T> {
     try {
       return await operation();
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error(`[Vault Commander] ${errorMessage}:`, err);
-      new Notice(`${errorMessage}。${err instanceof Error ? err.message : ''}`);
+      this.debugLogger.addLog('error', 'safeExecute', `${errorMessage}: ${msg}`, err);
+      new Notice(`${errorMessage}。${msg}`);
       return fallback;
     }
   }

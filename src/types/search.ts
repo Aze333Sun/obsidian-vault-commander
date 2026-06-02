@@ -23,6 +23,7 @@ export interface SearchResult {
   fileName: string;
   fullPath: string;
   title: string;
+  mtime: number;
   matches: SearchMatch[];
   score: number;
 }

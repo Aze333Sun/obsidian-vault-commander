@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     maxRecentItems: 20,
     compactMode: false,
     searchHistory: [],
+    debug: false,
   },
   version: 1,
 };

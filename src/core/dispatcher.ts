@@ -157,14 +157,55 @@ export class NoteDispatcher {
   }
 
   async jumpToNote(vault: VaultConfig, relativePath: string): Promise<void> {
-    const uri = `obsidian://open?vault=${encodeURIComponent(vault.name)}&file=${encodeURIComponent(relativePath)}`;
+    const vaultName = path.basename(vault.path);
+    const uri = `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(relativePath)}`;
     window.open(uri, '_blank');
+  }
+
+  async dispatchNote(params: {
+    targetVaultId: string;
+    targetFolder: string;
+    fileName: string;
+    content: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    const vault = this.plugin.settings.vaults.find(
+      (v: { id: string }) => v.id === params.targetVaultId,
+    );
+    if (!vault) return { success: false, error: '目标库未找到' };
+
+    const safeName = this.sanitizeFileName(params.fileName);
+    const fullPath = path.join(vault.path, params.targetFolder, safeName);
+
+    try {
+      await fs.promises.mkdir(path.dirname(fullPath), { recursive: true });
+
+      // Check conflict
+      try {
+        await fs.promises.access(fullPath);
+        return { success: false, error: '目标位置已存在同名文件' };
+      } catch {
+        // File does not exist, proceed
+      }
+
+      await fs.promises.writeFile(fullPath, params.content, 'utf-8');
+
+      this.plugin.eventBus.emit('note:dispatched', {
+        vaultId: vault.id,
+        filePath: params.targetFolder + '/' + safeName,
+      });
+
+      return { success: true };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: msg };
+    }
   }
 
   async openVault(vaultId: string): Promise<void> {
     const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === vaultId);
     if (!vault) return;
-    const uri = `obsidian://open?vault=${encodeURIComponent(vault.name)}`;
+    const vaultName = path.basename(vault.path);
+    const uri = `obsidian://open?vault=${encodeURIComponent(vaultName)}`;
     window.open(uri, '_blank');
   }
 

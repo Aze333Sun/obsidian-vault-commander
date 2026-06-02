@@ -1,4 +1,5 @@
 import SearchModalComponent from './ui/SearchModal.svelte';
+import { NotePreviewModal } from './preview-modal';
 import type VaultCommanderPlugin from '../main';
 import type { SearchResult } from '../types/search';
 
@@ -30,10 +31,8 @@ export class SearchModal {
           );
         },
         onOpenNote: (vaultId: string, filePath: string) => {
-          const vault = this.plugin.settings.vaults.find((v) => v.id === vaultId);
-          if (vault) {
-            this.plugin.dispatcher.jumpToNote(vault, filePath);
-          }
+          const modal = new NotePreviewModal(this.plugin);
+          modal.open(vaultId, filePath);
         },
       },
     });

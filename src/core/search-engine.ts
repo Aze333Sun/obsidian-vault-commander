@@ -13,6 +13,7 @@ interface IndexedEntry {
   content: string;
   tags: string;
   size: number;
+  mtime: number;
 }
 
 export class SearchEngine {
@@ -75,9 +76,10 @@ export class SearchEngine {
           fileName: change.fileName,
           fullPath: change.fileName,
           title: change.title,
-          content: '', // Content will be populated by scanner
+          content: '',
           tags: change.tags.join(' '),
           size: change.size,
+          mtime: change.mtime,
         });
       }
     }
@@ -172,6 +174,7 @@ export class SearchEngine {
         fileName: r.fileName as string,
         fullPath: r.fullPath as string,
         title: r.title as string,
+        mtime: (r as Record<string, unknown>).mtime as number ?? 0,
         matches: this.extractMatches(r, params.query),
         score: r.score,
       };

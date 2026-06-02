@@ -45,4 +45,5 @@ export interface UISettings {
   maxRecentItems: number;
   compactMode: boolean;
   searchHistory: string[];
+  debug: boolean;
 }

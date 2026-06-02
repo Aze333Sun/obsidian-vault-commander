@@ -6,54 +6,52 @@
   export let added7d: number = 0;
 </script>
 
-<div class="vc-card vc-stats-card">
-  <h3 class="vc-card-title">{vaultName}</h3>
-  <div class="vc-stats-grid">
-    <div class="vc-stat">
-      <span class="vc-stat-value">{totalNotes}</span>
-      <span class="vc-stat-label">笔记总数</span>
-    </div>
-    <div class="vc-stat">
-      <span class="vc-stat-value">{totalFolders}</span>
-      <span class="vc-stat-label">文件夹</span>
-    </div>
-    <div class="vc-stat">
-      <span class="vc-stat-value">{tagCount}</span>
-      <span class="vc-stat-label">标签</span>
-    </div>
-    <div class="vc-stat">
-      <span class="vc-stat-value">+{added7d}</span>
-      <span class="vc-stat-label">本周新增</span>
-    </div>
+<div class="vc-stats-row">
+  <span class="vc-stats-name">{vaultName}</span>
+  <div class="vc-stats-items">
+    <span class="vc-stat"><strong>{totalNotes}</strong><small>笔记</small></span>
+    <span class="vc-stat"><strong>{totalFolders}</strong><small>文件夹</small></span>
+    <span class="vc-stat"><strong>{tagCount}</strong><small>标签</small></span>
+    <span class="vc-stat vc-stat-added">+{added7d}<small>本周</small></span>
   </div>
 </div>
 
 <style>
-  .vc-stats-card {
-    margin-bottom: var(--size-4-2);
+  .vc-stats-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--background-modifier-border-hover);
   }
-  .vc-card-title {
-    font-size: var(--font-ui-medium);
+  .vc-stats-row:last-child { border-bottom: none; }
+  .vc-stats-name {
+    font-size: 13px;
     font-weight: 600;
-    margin: 0 0 var(--size-4-1);
     color: var(--text-normal);
+    min-width: 100px;
+    flex-shrink: 0;
   }
-  .vc-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--size-4-2);
+  .vc-stats-items {
+    display: flex;
+    gap: 20px;
   }
   .vc-stat {
     display: flex;
-    flex-direction: column;
-  }
-  .vc-stat-value {
-    font-size: var(--font-ui-large);
-    font-weight: 700;
-    color: var(--text-normal);
-  }
-  .vc-stat-label {
-    font-size: var(--font-smallest);
+    align-items: baseline;
+    gap: 3px;
+    font-size: 13px;
     color: var(--text-muted);
+  }
+  .vc-stat strong {
+    color: var(--text-normal);
+    font-weight: 600;
+  }
+  .vc-stat small {
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .vc-stat-added {
+    color: var(--color-green);
   }
 </style>
