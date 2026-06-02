@@ -1,11 +1,15 @@
 <script lang="ts">
+  import Paginator from '../shared/Paginator.svelte';
   import type { TaskItem } from '../../types/snapshot';
+
+  const PAGE_SIZE = 8;
 
   export let tasks: TaskItem[] = [];
   export let onOpenTask: (vaultId: string, fileName: string, line: number) => void = () => {};
   export let onToggleTask: (task: TaskItem) => void = () => {};
 
   let filter: 'all' | 'open' | 'done' = 'open';
+  let page = 0;
 
   $: filtered = tasks
     .filter((t) => {
@@ -17,6 +21,10 @@
       if (a.done !== b.done) return a.done ? 1 : -1;
       return b.priority - a.priority;
     });
+
+  $: total = filtered.length;
+  $: visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  $: if (filtered) { if (page * PAGE_SIZE >= filtered.length) page = 0; }
 
   $: openCount = tasks.filter((t) => !t.done).length;
   $: doneCount = tasks.filter((t) => t.done).length;
@@ -40,12 +48,12 @@
 
 <div class="vc-tasks">
   <div class="vc-tasks-tabs">
-    <button class="vc-tab" class:active={filter === 'open'} on:click={() => (filter = 'open')}>待办 {openCount}</button>
-    <button class="vc-tab" class:active={filter === 'done'} on:click={() => (filter = 'done')}>已完成 {doneCount}</button>
-    <button class="vc-tab" class:active={filter === 'all'} on:click={() => (filter = 'all')}>全部 {tasks.length}</button>
+    <button class="vc-tab" class:active={filter === 'open'} on:click={() => { filter = 'open'; page = 0; }}>待办 {openCount}</button>
+    <button class="vc-tab" class:active={filter === 'done'} on:click={() => { filter = 'done'; page = 0; }}>已完成 {doneCount}</button>
+    <button class="vc-tab" class:active={filter === 'all'} on:click={() => { filter = 'all'; page = 0; }}>全部 {tasks.length}</button>
   </div>
   <div class="vc-tasks-list">
-    {#each filtered as task (task.id)}
+    {#each visible as task (task.id)}
       <div class="vc-task" class:done={task.done}>
         <button class="vc-task-check" on:click={() => onToggleTask(task)}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/>{#if task.done}<path d="M8 12l3 3 5-5"/>{/if}</svg>
@@ -63,6 +71,7 @@
       </div>
     {/each}
   </div>
+  <Paginator {total} pageSize={PAGE_SIZE} current={page} onPage={(n) => (page = n)} />
 </div>
 
 <style>

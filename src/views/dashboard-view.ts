@@ -136,7 +136,7 @@ export class DashboardView extends ItemView {
       added7d: number;
     }> = [];
     const allRecent: any[] = [];
-    const allTags: Array<{ tag: string; count: number }> = [];
+    const allTags: Array<{ tag: string; count: number; vaultId: string }> = [];
     const allHealthData: HealthScore[] = [];
     const allSuggestions: Suggestion[] = [];
     const allTasks: TaskItem[] = [];
@@ -179,7 +179,7 @@ export class DashboardView extends ItemView {
       }
 
       for (const [tag, count] of Object.entries(snapshot.tags as Record<string, number>)) {
-        allTags.push({ tag: String(tag), count: Number(count) });
+        allTags.push({ tag: String(tag), count: Number(count), vaultId: snapshot.vaultId });
       }
 
       // Health score

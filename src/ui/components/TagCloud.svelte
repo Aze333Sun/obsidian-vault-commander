@@ -2,57 +2,60 @@
   export let tags: Array<{ tag: string; count: number }> = [];
   export let onTagClick: ((tag: string) => void) | null = null;
 
+  const ROWS = 3;
+
   $: maxCount = tags.length > 0 ? Math.max(...tags.map(t => t.count)) : 1;
-  $: sorted = [...tags].sort((a, b) => b.count - a.count).slice(0, 50);
+  $: sorted = [...tags].sort((a, b) => b.count - a.count).slice(0, 20);
+  $: cols = Math.ceil(sorted.length / ROWS);
+  $: grid = Array.from({ length: ROWS }, (_, r) => sorted.slice(r * cols, (r + 1) * cols));
 
   function fontSize(count: number): string {
     const min = 0.8;
-    const max = 1.8;
-    const ratio = count / maxCount;
-    return `${min + ratio * (max - min)}em`;
+    const max = 1.5;
+    return `${min + (count / maxCount) * (max - min)}em`;
   }
 </script>
 
-<div class="vc-tagcloud">
-  <h3 class="vc-section-title">标签云</h3>
-  {#if sorted.length === 0}
-    <p class="vc-muted">暂无标签</p>
-  {:else}
-    <div class="vc-tagcloud-container">
-      {#each sorted as { tag, count }}
-        <!-- svelte-ignore a11y-no-noninteractive-tabindex -->
-        <span
-          class="vc-tagcloud-tag"
-          style="font-size: {fontSize(count)}"
-          on:click={() => onTagClick?.(tag)}
-          on:keydown={(e) => { if (e.key === 'Enter' && onTagClick) onTagClick(tag); }}
-          role={onTagClick ? 'button' : undefined}
-          tabindex={onTagClick ? 0 : -1}
-          title="{tag} ({count})"
-        >
-          #{tag}
-        </span>
-      {/each}
-    </div>
-  {/if}
-</div>
+{#if sorted.length > 0}
+  <div class="vc-tagcloud">
+    {#each grid as row}
+      <div class="vc-tagcloud-row">
+        {#each row as { tag, count }}
+          <span
+            class="vc-tagcloud-tag"
+            style="font-size: {fontSize(count)}"
+            on:click={() => onTagClick?.(tag)}
+            on:keydown={(e) => { if (e.key === 'Enter' && onTagClick) onTagClick(tag); }}
+            role={onTagClick ? 'button' : undefined}
+            tabindex={onTagClick ? 0 : -1}
+            title="{tag} ({count})"
+          >
+            #{tag}
+          </span>
+        {/each}
+      </div>
+    {/each}
+  </div>
+{/if}
 
 <style>
   .vc-tagcloud {
-    margin-bottom: var(--size-4-3);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    line-height: 1.4;
   }
-  .vc-tagcloud-container {
+  .vc-tagcloud-row {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--size-4-1);
-    align-items: center;
+    gap: 4px 8px;
+    align-items: baseline;
   }
   .vc-tagcloud-tag {
     color: var(--tag-color);
     cursor: default;
-    transition: opacity 0.15s ease;
+    transition: opacity 0.15s;
+    white-space: nowrap;
   }
-  .vc-tagcloud-tag:hover {
-    opacity: 0.7;
-  }
+  .vc-tagcloud-tag:hover { opacity: 0.65; }
 </style>

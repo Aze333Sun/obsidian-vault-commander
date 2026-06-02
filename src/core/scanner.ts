@@ -19,19 +19,17 @@ function parseFrontmatter(raw: string): { title: string; tags: string[] } {
   const fm = match[1];
   const tags: string[] = [];
 
-  // Extract tags line
+  // Inline: tags: tag1, tag2  or  tags: [tag1, tag2]
   const tagMatch = fm.match(TAG_LINE_RE);
   if (tagMatch) {
     const tagContent = tagMatch[1].trim();
     if (tagContent.startsWith('[')) {
-      // Array form: tags: [tag1, tag2]
       const inner = tagContent.slice(1, tagContent.lastIndexOf(']'));
       for (const t of inner.split(',')) {
         const cleaned = t.trim().replace(/^['"]|['"]$/g, '');
         if (cleaned) tags.push(cleaned);
       }
     } else {
-      // List form or single tag
       const listMatches = tagContent.matchAll(TAG_LIST_RE);
       for (const m of listMatches) {
         const cleaned = m[1].trim().replace(/^['"]|['"]$/g, '');
@@ -39,6 +37,32 @@ function parseFrontmatter(raw: string): { title: string; tags: string[] } {
       }
       if (tags.length === 0) {
         tags.push(tagContent.replace(/^['"]|['"]$/g, ''));
+      }
+    }
+  }
+
+  // Multi-line YAML: tags:\n  - item1\n  - item2
+  if (tags.length === 0) {
+    const multiTagRe = /^tags?\s*:\s*$/im;
+    const multiMatch = fm.match(multiTagRe);
+    if (multiMatch) {
+      // Find all "- value" lines after the tags: line
+      const tagBlock = fm.split(/\n/);
+      let inTags = false;
+      for (const line of tagBlock) {
+        if (/^tags?\s*:\s*$/i.test(line.trim())) {
+          inTags = true;
+          continue;
+        }
+        if (inTags) {
+          const m2 = line.match(/^\s+-\s+(.+)/);
+          if (m2) {
+            tags.push(m2[1].trim().replace(/^['"]|['"]$/g, ''));
+          } else if (/^\S/.test(line)) {
+            // Non-indented line → end of tags section
+            break;
+          }
+        }
       }
     }
   }

@@ -4,7 +4,15 @@
   export let scanning: boolean = false;
   export let hostName: string = '';
   export let hostNotes: number = 0;
+  export let showHealth: boolean = false;
+  export let healthScore: number = 0;
+  export let healthActivity: number = 0;
+  export let healthLinks: number = 0;
+  export let healthLabel: string = '';
   export let onOpenVault: (() => void) | null = null;
+
+  $: scoreColor = healthScore >= 80 ? 'var(--color-green)' : healthScore >= 60 ? 'var(--color-orange)' : 'var(--color-red)';
+  $: barColor = healthScore >= 80 ? 'var(--color-green)' : healthScore >= 60 ? 'var(--color-orange)' : 'var(--color-red)';
 </script>
 
 <div class="vc-topbar">
@@ -15,6 +23,21 @@
       <button class="vc-host-badge" on:click={onOpenVault} title="点击查看当前库内容">
         {hostName} · {hostNotes}
       </button>
+    {/if}
+    {#if showHealth}
+      <div class="vc-health-mini" title="{healthLabel}">
+        <span class="vc-health-score" style="color:{scoreColor}">{healthScore}</span>
+        <div class="vc-health-bars">
+          <div class="vc-health-bar">
+            <span class="vc-health-bar-lbl">活跃</span>
+            <div class="vc-health-bar-t"><div class="vc-health-bar-f" style="width:{healthActivity}%; background:{barColor}"></div></div>
+          </div>
+          <div class="vc-health-bar">
+            <span class="vc-health-bar-lbl">链接</span>
+            <div class="vc-health-bar-t"><div class="vc-health-bar-f" style="width:{healthLinks}%; background:{barColor}"></div></div>
+          </div>
+        </div>
+      </div>
     {/if}
   </div>
   <div class="vc-actions">
@@ -55,6 +78,46 @@
     font-family: var(--font-interface);
   }
   .vc-host-badge:hover { border-color: var(--interactive-accent); color: var(--text-normal); }
+  .vc-health-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 2px;
+  }
+  .vc-health-score {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .vc-health-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .vc-health-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .vc-health-bar-lbl {
+    font-size: 9px;
+    color: var(--text-faint);
+    width: 20px;
+    flex-shrink: 0;
+  }
+  .vc-health-bar-t {
+    width: 40px;
+    height: 5px;
+    background: var(--background-modifier-border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .vc-health-bar-f {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
   .vc-actions { display: flex; align-items: center; gap: 2px; }
   .vc-icon-btn {
     display: flex; align-items: center; justify-content: center;
