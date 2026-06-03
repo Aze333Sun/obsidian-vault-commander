@@ -7,7 +7,7 @@ import path from 'path';
 
 const isProduction = process.argv.includes('production');
 
-const outDir = '.';
+const outDir = 'release';
 if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
@@ -16,7 +16,7 @@ if (!fs.existsSync(outDir)) {
 const config = {
   entryPoints: ['src/main.ts'],
   bundle: true,
-  outfile: 'main.js',
+  outfile: 'release/main.js',
   format: 'cjs',
   target: 'es2018',
   platform: 'browser',
@@ -52,16 +52,22 @@ async function build() {
 
     const result = await esbuild.build(config);
 
-    // 复制 CSS 到产物根目录
+    // 复制 CSS 到产物目录 + manifest.json
     const cssSrc = path.join('styles', 'vault-commander.css');
-    const cssDest = 'styles.css';
+    const cssDest = path.join(outDir, 'styles.css');
     if (fs.existsSync(cssSrc)) {
       fs.copyFileSync(cssSrc, cssDest);
       console.log(`📄 styles.css (${(fs.statSync(cssDest).size / 1024).toFixed(1)} KB)`);
     }
+    // 复制 manifest.json
+    const mfSrc = 'manifest.json';
+    const mfDest = path.join(outDir, 'manifest.json');
+    if (fs.existsSync(mfSrc)) {
+      fs.copyFileSync(mfSrc, mfDest);
+    }
 
     if (isProduction) {
-      const stats = fs.statSync('main.js');
+      const stats = fs.statSync(path.join(outDir, 'main.js'));
       const sizeKB = (stats.size / 1024).toFixed(1);
       console.log(`✅ 构建完成: main.js (${sizeKB} KB)`);
       if (stats.size > 1024 * 1024) {
