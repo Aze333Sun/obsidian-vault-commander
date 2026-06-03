@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import type { VaultConfig } from '../types/settings';
 import type VaultCommanderPlugin from '../main';
 import { TemplateEngine } from '../utils/template';
+import { PathUtils } from '../utils/path';
 
 export interface CreateNoteParams {
   title: string;
@@ -198,6 +199,36 @@ export class NoteDispatcher {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return { success: false, error: msg };
+    }
+  }
+
+  async deleteNote(vaultId: string, filePath: string): Promise<{ success: boolean; error?: string }> {
+    // Host vault: use Obsidian API
+    const hostConfig = this.plugin.scanner.getHostVaultConfig();
+    if (vaultId === '__host__' || PathUtils.normalize(vaultId) === PathUtils.normalize(hostConfig.id)) {
+      try {
+        const file = this.plugin.app.vault.getAbstractFileByPath(filePath);
+        if (file) {
+          await this.plugin.app.vault.delete(file);
+          return { success: true };
+        }
+        return { success: false, error: '文件未找到' };
+      } catch (err) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    }
+
+    // External vault: use fs
+    const vault = this.plugin.settings.vaults.find(v => v.id === vaultId);
+    if (!vault) return { success: false, error: '库未找到' };
+
+    try {
+      const fullPath = path.join(vault.path, filePath);
+      await fs.promises.unlink(fullPath);
+      this.plugin.eventBus.emit('note:deleted', { vaultId, filePath });
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   }
 

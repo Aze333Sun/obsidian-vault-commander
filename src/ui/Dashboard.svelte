@@ -7,6 +7,7 @@
   import SuggestionList from './components/SuggestionList.svelte';
   import EmbedRefSection from './components/EmbedRefSection.svelte';
   import TaskSection from './components/TaskSection.svelte';
+  import OrphanNotes from './components/OrphanNotes.svelte';
   import WeeklyOverview from './components/WeeklyOverview.svelte';
   import DebugPanel from './components/DebugPanel.svelte';
   import Section from './shared/Section.svelte';
@@ -56,10 +57,15 @@
   export let onToggleDebug: (() => void) | null = null;
   export let onClearDebugLogs: (() => void) | null = null;
   export let onOpenTask: (vaultId: string, fileName: string, line: number) => void = () => {};
+  export let onDeleteNote: ((vaultId: string, filePath: string) => void) | null = null;
   export let onToggleTask: (task: {
     id: string; vaultId: string; fileName: string; title: string; done: boolean;
     line: number; dueDate: string | null; priority: number;
   }) => void = () => {};
+
+  export let orphans: Array<{
+    vaultId: string; vaultName: string; fileName: string; title: string; folder: string;
+  }> = [];
 
   // --- Active vault ---
   let activeVaultId: string | null = null;
@@ -84,6 +90,7 @@
   let activeEmbed: typeof embedData = [];
   let activeSuggestions: typeof suggestions = [];
   let activeTags: typeof tagCloud = [];
+  let activeOrphans: typeof orphans = [];
   let totalNotes = 0, totalFolders = 0, totalAdded = 0;
   let wAdd24 = 0, wAdd30 = 0;
 
@@ -95,6 +102,7 @@
     activeHealth = vid ? healthData.filter(h => h.vaultId === vid) : healthData;
     activeEmbed = vid ? embedData.filter(e => e.vaultId === vid) : embedData;
     activeSuggestions = vid ? suggestions.filter(s => !s.vaultId || s.vaultId === vid) : suggestions;
+    activeOrphans = vid ? orphans.filter(o => o.vaultId === vid) : orphans;
     activeTags = (vid ? tagCloud.filter(t => t.vaultId === vid) : tagCloud).slice(0, 20);
     totalNotes = 0; totalFolders = 0; totalAdded = 0; wAdd24 = 0; wAdd30 = 0;
     for (const s of activeStats) { totalNotes += s.totalNotes; totalFolders += s.totalFolders; totalAdded += s.added7d; wAdd24 += s.added24h; wAdd30 += s.added30d; }
@@ -108,7 +116,7 @@
   $: debugEnabled = debugReport?.enabled ?? false;
 
   // --- Draggable slot layout ---
-  type SectionKey = 'stats' | 'tasks' | 'recent' | 'health' | 'suggestions' | 'embed' | 'otherVaults' | 'weekly' | 'empty';
+  type SectionKey = 'stats' | 'tasks' | 'recent' | 'health' | 'suggestions' | 'embed' | 'otherVaults' | 'weekly' | 'orphans' | 'empty';
 
   interface Slot {
     id: number;
@@ -129,7 +137,7 @@
     { id: 9, col: 1, key: 'suggestions' },
     { id: 10, col: 1, key: 'embed' },
     { id: 11, col: 1, key: 'otherVaults' },
-    { id: 12, col: 1, key: 'empty' },
+    { id: 12, col: 1, key: 'orphans' },
     { id: 13, col: 1, key: 'empty' },
     { id: 14, col: 1, key: 'empty' },
     { id: 15, col: 1, key: 'empty' },
@@ -178,6 +186,7 @@
       case 'embed': return activeEmbed.length > 0;
       case 'otherVaults': return vaults.length > 1;
       case 'weekly': return activeStats.length > 0;
+      case 'orphans': return activeOrphans.length > 0;
       default: return false;
     }
   }
@@ -306,6 +315,10 @@
               <Section title="嵌入引用" defaultOpen={false}>
                 <EmbedRefSection embedData={activeEmbed} />
               </Section>
+            {:else if slot.key === 'orphans'}
+              <Section title="无链接笔记" badge="{activeOrphans.length}" defaultOpen={false}>
+                <OrphanNotes notes={activeOrphans} {onOpenNote} onDeleteNote={(vid, fp) => onDeleteNote?.(vid, fp)} />
+              </Section>
             {:else if slot.key === 'weekly'}
               <Section title="活跃动态">
                 <WeeklyOverview added24h={wAdd24} added7d={totalAdded} added30d={wAdd30} modified24h={0} modified7d={0} modified30d={0} />
@@ -364,6 +377,10 @@
             {:else if slot.key === 'embed'}
               <Section title="嵌入引用" defaultOpen={false}>
                 <EmbedRefSection embedData={activeEmbed} />
+              </Section>
+            {:else if slot.key === 'orphans'}
+              <Section title="无链接笔记" badge="{activeOrphans.length}" defaultOpen={false}>
+                <OrphanNotes notes={activeOrphans} {onOpenNote} onDeleteNote={(vid, fp) => onDeleteNote?.(vid, fp)} />
               </Section>
             {:else if slot.key === 'weekly'}
               <Section title="活跃动态">

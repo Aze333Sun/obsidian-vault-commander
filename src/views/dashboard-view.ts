@@ -66,6 +66,7 @@ export class DashboardView extends ItemView {
         onOpenTask: (vaultId: string, fileName: string, line: number) =>
           this.openTask(vaultId, fileName, line),
         onToggleTask: (task: TaskItem) => this.toggleTask(task),
+        onDeleteNote: (vaultId: string, filePath: string) => this.deleteNote(vaultId, filePath),
         onRefresh: () => this.plugin.scanner.refresh(),
         onOpenNote: (vaultId: string, filePath: string) => {
           const modal = new NotePreviewModal(this.plugin);
@@ -152,6 +153,9 @@ export class DashboardView extends ItemView {
     const allHealthData: HealthScore[] = [];
     const allSuggestions: Suggestion[] = [];
     const allTasks: TaskItem[] = [];
+    const allOrphans: Array<{
+      vaultId: string; vaultName: string; fileName: string; title: string; folder: string;
+    }> = [];
     const embedData: Array<{
       vaultId: string; vaultName: string;
       images: number; audio: number; video: number; other: number; broken: number;
@@ -182,6 +186,13 @@ export class DashboardView extends ItemView {
       });
 
       allRecent.push(...snapshot.recentChanges);
+
+      // Orphan notes
+      for (const c of snapshot.recentChanges) {
+        if (c.links.outgoing === 0 && c.links.incoming === 0) {
+          allOrphans.push({ vaultId: snapshot.vaultId, vaultName, fileName: c.fileName, title: c.title, folder: c.folder });
+        }
+      }
 
       if (snapshot.tasks) {
         for (const t of snapshot.tasks) allTasks.push({ ...t, vaultName });
@@ -257,6 +268,7 @@ export class DashboardView extends ItemView {
         healthData: allHealthData,
         suggestions: allSuggestions,
         tasks: allTasks,
+        orphans: allOrphans,
         embedData,
       });
       this.plugin.debugLogger.addLog('debug', 'dashboard', '$set 完成');
@@ -332,6 +344,16 @@ export class DashboardView extends ItemView {
       }
     } catch (err) {
       this.plugin.debugLogger.addLog('error', 'task', `切换任务状态失败: ${String(err)}`);
+    }
+  }
+
+  private async deleteNote(vaultId: string, filePath: string): Promise<void> {
+    const result = await this.plugin.dispatcher.deleteNote(vaultId, filePath);
+    if (!result.success) {
+      new (require('obsidian').Notice)(`删除失败: ${result.error}`);
+    } else {
+      new (require('obsidian').Notice)('已删除');
+      this.plugin.scanner.scanIncremental();
     }
   }
 
