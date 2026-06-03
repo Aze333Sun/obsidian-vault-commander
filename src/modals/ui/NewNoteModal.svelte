@@ -22,7 +22,9 @@
   let successMessage: string | null = null;
   let titleInput: HTMLInputElement;
 
-  $: if (visible && vaults.length > 0) {
+  let initialized = false;
+  $: if (visible && vaults.length > 0 && !initialized) {
+    initialized = true;
     if (!selectedVaultId) selectedVaultId = vaults[0].id;
     title = ''; error = null; successMessage = null; creating = false;
     setTimeout(() => titleInput?.focus(), 50);

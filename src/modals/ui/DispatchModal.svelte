@@ -17,7 +17,9 @@
   let error: string | null = null;
   let done: boolean = false;
 
-  $: if (visible && vaults.length > 0) {
+  let initialized = false;
+  $: if (visible && vaults.length > 0 && !initialized) {
+    initialized = true;
     selectedVaultId = vaults[0].id;
     selectedFolder = '/';
     fileName = sourceName;

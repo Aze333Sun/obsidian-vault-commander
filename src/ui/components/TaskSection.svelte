@@ -3,18 +3,19 @@
   import type { TaskItem } from '../../types/snapshot';
 
   const PAGE_SIZE = 8;
+  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
 
   export let tasks: TaskItem[] = [];
   export let onOpenTask: (vaultId: string, fileName: string, line: number) => void = () => {};
-  export let onToggleTask: (task: TaskItem) => void = () => {};
 
   let filter: 'all' | 'open' | 'done' = 'open';
   let page = 0;
 
+  $: now = Date.now();
   $: filtered = tasks
     .filter((t) => {
+      if (filter === 'done') return t.done && (now - t.mtime) < THREE_DAYS;
       if (filter === 'open') return !t.done;
-      if (filter === 'done') return t.done;
       return true;
     })
     .sort((a, b) => {
@@ -27,7 +28,7 @@
   $: if (filtered) { if (page * PAGE_SIZE >= filtered.length) page = 0; }
 
   $: openCount = tasks.filter((t) => !t.done).length;
-  $: doneCount = tasks.filter((t) => t.done).length;
+  $: recentDoneCount = tasks.filter((t) => t.done && (now - t.mtime) < THREE_DAYS).length;
 
   function fmtDue(d: string | null): string {
     if (!d) return '';
@@ -45,15 +46,12 @@
 <div class="vc-tasks">
   <div class="vc-tasks-tabs">
     <button class="vc-tab" class:active={filter === 'open'} on:click={() => { filter = 'open'; page = 0; }}>待办 {openCount}</button>
-    <button class="vc-tab" class:active={filter === 'done'} on:click={() => { filter = 'done'; page = 0; }}>已完成 {doneCount}</button>
+    <button class="vc-tab" class:active={filter === 'done'} on:click={() => { filter = 'done'; page = 0; }}>已完成 ({recentDoneCount})</button>
     <button class="vc-tab" class:active={filter === 'all'} on:click={() => { filter = 'all'; page = 0; }}>全部 {tasks.length}</button>
   </div>
   <div class="vc-tasks-list">
     {#each visible as task (task.id)}
       <div class="vc-task" class:done={task.done}>
-        <button class="vc-task-check" on:click={() => onToggleTask(task)}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/>{#if task.done}<path d="M8 12l3 3 5-5"/>{/if}</svg>
-        </button>
         <button class="vc-task-body" on:click={() => onOpenTask(task.vaultId, task.fileName, task.line)}>
           <span class="vc-task-title">
             {#if task.priority >= 3}<span class="vc-prio vc-prio-3">●</span>{/if}
@@ -102,19 +100,6 @@
     transition: background 0.1s;
   }
   .vc-task:hover { background: var(--background-modifier-hover); }
-  .vc-task-check {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--text-muted);
-    margin-top: 1px;
-  }
-  .vc-task-check:hover { color: var(--interactive-accent); }
-  .vc-task.done .vc-task-check { color: var(--color-green); }
   .vc-task-body {
     flex: 1;
     display: flex;

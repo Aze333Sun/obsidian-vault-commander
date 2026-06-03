@@ -21,6 +21,20 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   templates: {
     defaultTemplates: {},
     defaultFolders: {},
+    customTemplates: [
+      {
+        name: '任务记录',
+        content: '---\ntags:\n  - task\ncreated: {{date}}\n---\n\n# {{title}}\n\n## 目标\n\n- [ ] \n\n## 备注\n\n',
+      },
+      {
+        name: '灵感记录',
+        content: '---\ntags:\n  - idea\ncreated: {{date}}\n---\n\n# {{title}}\n\n## 来源\n\n## 想法\n\n## 行动\n\n- [ ] \n',
+      },
+      {
+        name: '小日记',
+        content: '---\ntags:\n  - diary\ncreated: {{date}}\n---\n\n# {{title}}\n\n## 今日记录\n\n## 思考\n\n## 明日计划\n\n- [ ] \n',
+      },
+    ],
   },
   ui: {
     showTagCloud: true,

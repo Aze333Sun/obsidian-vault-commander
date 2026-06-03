@@ -65,7 +65,6 @@ export class DashboardView extends ItemView {
         onClearDebugLogs: () => this.clearDebugLogs(),
         onOpenTask: (vaultId: string, fileName: string, line: number) =>
           this.openTask(vaultId, fileName, line),
-        onToggleTask: (task: TaskItem) => this.toggleTask(task),
         enabledModules: this.plugin.settings.ui.modules || {},
         onDeleteNote: (vaultId: string, filePath: string) => this.deleteNote(vaultId, filePath),
         onRefresh: () => this.plugin.scanner.refresh(),
@@ -153,6 +152,7 @@ export class DashboardView extends ItemView {
       tagCount: number;
       added24h: number;
       added7d: number;
+      added30d: number;
     }> = [];
     const allRecent: any[] = [];
     const tagMap = new Map<string, { tag: string; count: number; vaultId: string }>();
@@ -188,7 +188,7 @@ export class DashboardView extends ItemView {
         vaultId: snapshot.vaultId, vaultName,
         totalNotes: snapshot.totalNotes, totalFolders: snapshot.totalFolders,
         tagCount: Object.keys(snapshot.tags).length,
-        added24h: snapshot.stats.added24h, added7d: snapshot.stats.added7d,
+        added24h: snapshot.stats.added24h, added7d: snapshot.stats.added7d, added30d: snapshot.stats.added30d,
       });
 
       allRecent.push(...snapshot.recentChanges);
@@ -240,7 +240,7 @@ export class DashboardView extends ItemView {
 
     // Suggest plugin install for large external vaults
     for (const [, snapshot] of snapshots) {
-      if (!snapshot.isHost && snapshot.totalNotes > 20) {
+      if (!snapshot.isHost && snapshot.totalNotes > 500) {
         const vc = vaults.find((v: { id: string }) => v.id === snapshot.vaultId);
         allSuggestions.push({
           type: 'tip' as const,
@@ -322,47 +322,6 @@ export class DashboardView extends ItemView {
   private openTask(vaultId: string, fileName: string, _line: number): void {
     const modal = new NotePreviewModal(this.plugin);
     modal.open(vaultId, fileName);
-  }
-
-  private async toggleTask(task: TaskItem): Promise<void> {
-    const isHost = task.vaultId === HOST_VAULT_ID
-      || !this.plugin.settings.vaults.find((v: { id: string }) => v.id === task.vaultId);
-    try {
-      if (isHost) {
-        // Use Obsidian API for host vault
-        const file = this.plugin.app.vault.getAbstractFileByPath(task.fileName);
-        if (!file) return;
-        let content = await this.plugin.app.vault.read(file as any);
-        const lines = content.split('\n');
-        const lineIdx = task.line - 1;
-        if (lineIdx >= 0 && lineIdx < lines.length) {
-          lines[lineIdx] = task.done
-            ? lines[lineIdx].replace(/\[[xX]\]/, '[ ]')
-            : lines[lineIdx].replace(/\[ \]/, '[x]');
-          await this.plugin.app.vault.modify(file as any, lines.join('\n'));
-          this.plugin.scanner.scanIncremental();
-        }
-      } else {
-        // External vault: use fs
-        const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === task.vaultId);
-        if (!vault) return;
-        const fs = require('fs');
-        const nodePath = require('path');
-        const fullPath = nodePath.join(vault.path, task.fileName);
-        let content = await fs.promises.readFile(fullPath, 'utf-8');
-        const lines = content.split('\n');
-        const lineIdx = task.line - 1;
-        if (lineIdx >= 0 && lineIdx < lines.length) {
-          lines[lineIdx] = task.done
-            ? lines[lineIdx].replace(/\[[xX]\]/, '[ ]')
-            : lines[lineIdx].replace(/\[ \]/, '[x]');
-          await fs.promises.writeFile(fullPath, lines.join('\n'), 'utf-8');
-          this.plugin.scanner.scanIncremental();
-        }
-      }
-    } catch (err) {
-      this.plugin.debugLogger.addLog('error', 'task', `切换任务状态失败: ${String(err)}`);
-    }
   }
 
   private async deleteNote(vaultId: string, filePath: string): Promise<void> {

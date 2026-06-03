@@ -24,7 +24,7 @@
   }> = [];
   export let stats: Array<{
     vaultId: string; vaultName: string; totalNotes: number; totalFolders: number;
-    tagCount: number; added24h: number; added7d: number;
+    tagCount: number; added24h: number; added7d: number; added30d: number;
   }> = [];
   export let recentChanges: Array<{
     vaultId: string; fileName: string; title: string; mtime: number;
@@ -59,10 +59,6 @@
   export let onOpenTask: (vaultId: string, fileName: string, line: number) => void = () => {};
   export let onDeleteNote: ((vaultId: string, filePath: string) => void) | null = null;
   export let enabledModules: Record<string, boolean> = {};
-  export let onToggleTask: (task: {
-    id: string; vaultId: string; fileName: string; title: string; done: boolean;
-    line: number; dueDate: string | null; priority: number;
-  }) => void = () => {};
 
   export let orphans: Array<{
     vaultId: string; vaultName: string; fileName: string; title: string; folder: string;
@@ -109,7 +105,7 @@
     for (const s of activeStats) { totalNotes += s.totalNotes; totalFolders += s.totalFolders; totalAdded += s.added7d; wAdd24 += s.added24h; wAdd30 += s.added30d; }
   }
 
-  $: cardStep = 24;
+  const cardStep = 24;
   $: cardAreaH = Math.max(80, 4 + Math.max(0, externalVaults.length - 1) * 4 + 100 + 8);
 
   $: hasContent = stats.length > 0 || recentChanges.length > 0 || tasks.length > 0;
@@ -183,7 +179,6 @@
   }
 
   function hasData(key: SectionKey): boolean {
-    if (!isModuleEnabled(key)) return false;
     switch (key) {
       case 'stats': return activeStats.length > 0;
       case 'tasks': return activeTasks.length > 0;
@@ -297,15 +292,14 @@
         {#each leftSlots as slot (slot.id)}
           <div
             class="vc-slot"
-            class:drag-over={false}
-            draggable={slot.key !== 'empty' && hasData(slot.key)}
+            draggable={slot.key !== 'empty' && isModuleEnabled(slot.key) && hasData(slot.key)}
             on:dragstart={(e) => onDragStart(e, slot.id)}
             on:dragover={(e) => onDragOver(e, slot.id)}
             on:drop={(e) => onDrop(e, slot.id)}
           >
-            {#if slot.key === 'empty' || !hasData(slot.key)}
+            {#if slot.key === 'empty' || !isModuleEnabled(slot.key) || !hasData(slot.key)}
               <div class="vc-slot-empty">
-                {#if slot.key === 'empty'}
+                {#if slot.key === 'empty' || !isModuleEnabled(slot.key)}
                   <span class="vc-slot-hint">拖放模块到此处</span>
                 {:else}
                   <span class="vc-slot-name">{slotName(slot.key)}</span>
@@ -326,7 +320,7 @@
               </Section>
             {:else if slot.key === 'tasks'}
               <Section title="任务待办" badge={sectionBadge('tasks')}>
-                <TaskSection tasks={activeTasks} {onOpenTask} {onToggleTask} />
+                <TaskSection tasks={activeTasks} {onOpenTask} />
               </Section>
             {:else if slot.key === 'recent'}
               <Section title="最近更新" badge={sectionBadge('recent')} defaultOpen={false}>
@@ -370,14 +364,14 @@
         {#each rightSlots as slot (slot.id)}
           <div
             class="vc-slot"
-            draggable={slot.key !== 'empty' && hasData(slot.key)}
+            draggable={slot.key !== 'empty' && isModuleEnabled(slot.key) && hasData(slot.key)}
             on:dragstart={(e) => onDragStart(e, slot.id)}
             on:dragover={(e) => onDragOver(e, slot.id)}
             on:drop={(e) => onDrop(e, slot.id)}
           >
-            {#if slot.key === 'empty' || !hasData(slot.key)}
+            {#if slot.key === 'empty' || !isModuleEnabled(slot.key) || !hasData(slot.key)}
               <div class="vc-slot-empty">
-                {#if slot.key === 'empty'}
+                {#if slot.key === 'empty' || !isModuleEnabled(slot.key)}
                   <span class="vc-slot-hint">拖放模块到此处</span>
                 {:else}
                   <span class="vc-slot-name">{slotName(slot.key)}</span>
@@ -390,7 +384,7 @@
               </Section>
             {:else if slot.key === 'tasks'}
               <Section title="任务待办" badge={sectionBadge('tasks')}>
-                <TaskSection tasks={activeTasks} {onOpenTask} {onToggleTask} />
+                <TaskSection tasks={activeTasks} {onOpenTask} />
               </Section>
             {:else if slot.key === 'recent'}
               <Section title="最近更新" badge={sectionBadge('recent')} defaultOpen={false}>

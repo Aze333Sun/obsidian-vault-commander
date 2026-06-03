@@ -6,8 +6,9 @@ export interface TaskItem {
   vaultName: string;
   fileName: string;
   line: number;
-  priority: number; // 0 = none, 1-3
-  dueDate: string | null; // YYYY-MM-DD
+  priority: number;
+  dueDate: string | null;
+  mtime: number;
 }
 
 export interface VaultSnapshot {

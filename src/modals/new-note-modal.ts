@@ -27,7 +27,12 @@ export class NewNoteModal {
           return this.plugin.dispatcher.getFolders(vaultId);
         },
         getTemplates: async (vaultId: string) => {
-          return this.plugin.dispatcher.getTemplates(vaultId);
+          const fsTemplates = await this.plugin.dispatcher.getTemplates(vaultId);
+          const custom = (this.plugin.settings.templates.customTemplates || []).map((t) => ({
+            name: t.name,
+            path: `__custom__::${t.name}`,
+          }));
+          return [...custom, ...fsTemplates];
         },
         onCreate: async (params: {
           title: string;

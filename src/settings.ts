@@ -23,23 +23,74 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  private makeSection(container: HTMLElement, title: string, open: boolean = false): HTMLElement {
+    const details = container.createEl('details', { cls: 'vc-settings-section' });
+    const summary = details.createEl('summary', { cls: 'vc-settings-summary' });
+    summary.createEl('h2', { text: title });
+    (details as HTMLDetailsElement).open = open;
+    const body = details.createEl('div', { cls: 'vc-settings-body' });
+    return body;
+  }
+
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
 
     containerEl.createEl('h1', { text: '控制台' });
 
-    this.buildVaultListSection(containerEl);
-    this.buildScanSettingsSection(containerEl);
-    this.buildFileTypeSection(containerEl);
-    this.buildIgnoreSection(containerEl);
-    this.buildDisplaySection(containerEl);
+    // Add custom styles for settings
+    const style = containerEl.createEl('style');
+    style.textContent = `
+      .vc-settings-section {
+        margin-bottom: 12px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .vc-settings-section[open] {
+        border-color: var(--interactive-accent);
+      }
+      .vc-settings-summary {
+        padding: 10px 16px;
+        cursor: pointer;
+        user-select: none;
+        background: var(--background-secondary);
+        transition: background 0.15s;
+      }
+      .vc-settings-summary:hover {
+        background: var(--background-modifier-hover);
+      }
+      .vc-settings-summary h2 {
+        display: inline;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-normal);
+      }
+      .vc-settings-summary::marker {
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .vc-settings-section[open] .vc-settings-summary {
+        border-bottom: 1px solid var(--background-modifier-border);
+      }
+      .vc-settings-body {
+        padding: 8px 16px 12px;
+      }
+    `;
+
+    this.buildVaultListSection(this.makeSection(containerEl, '分库管理', true));
+    this.buildTemplateSection(this.makeSection(containerEl, '模板管理'));
+    this.buildScanSettingsSection(this.makeSection(containerEl, '扫描设置'));
+    this.buildFileTypeSection(this.makeSection(containerEl, '文件类型'));
+    this.buildIgnoreSection(this.makeSection(containerEl, '忽略设置'));
+    this.buildDisplaySection(this.makeSection(containerEl, '显示与模块', true));
   }
 
   // ─── 分库管理 ─────────────────────────────────────
 
   private buildVaultListSection(container: HTMLElement): void {
-    container.createEl('h2', { text: '分库管理' });
+    container.createEl('h3', { text: '已配置分库' });
 
     const vaults = this.plugin.settings.vaults;
 
@@ -172,10 +223,63 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
     );
   }
 
+  // ─── 模板管理 ─────────────────────────────────────
+
+  private buildTemplateSection(container: HTMLElement): void {
+    container.createEl('h3', { text: '内置模板' });
+    container.createEl('p', { text: '新建分发时可选择这些模板。支持 {{title}} 和 {{date}} 占位符。', cls: 'setting-item-description' });
+
+    const templates = this.plugin.settings.templates.customTemplates;
+
+    const renderTemplates = () => {
+      // Clear existing template settings
+      const old = container.querySelectorAll('.vc-template-item');
+      old.forEach((e) => e.remove());
+
+      templates.forEach((tpl, idx) => {
+        const div = container.createEl('div', { cls: 'vc-template-item' });
+        div.style.cssText = 'margin-bottom:12px;padding:8px;border:1px solid var(--background-modifier-border);border-radius:6px;';
+
+        new Setting(div)
+          .setName(`模板 ${idx + 1}`)
+          .addText((text) =>
+            text.setValue(tpl.name).onChange((v) => { tpl.name = v; this.plugin.saveSettings(); }),
+          );
+
+        const textarea = div.createEl('textarea');
+        textarea.style.cssText = 'width:100%;height:80px;font-family:var(--font-monospace);font-size:11px;margin-top:4px;';
+        textarea.value = tpl.content;
+        textarea.oninput = () => { tpl.content = textarea.value; this.plugin.saveSettings(); };
+
+        new Setting(div)
+          .addButton((btn) =>
+            btn.setButtonText('删除').onClick(async () => {
+              templates.splice(idx, 1);
+              await this.plugin.saveSettings();
+              this.display();
+            }),
+          );
+      });
+    };
+
+    renderTemplates();
+
+    new Setting(container)
+      .setName('添加模板')
+      .setDesc('创建新的自定义模板')
+      .addButton((btn) =>
+        btn.setButtonText('添加').onClick(async () => {
+          templates.push({ name: '新模板', content: '---\ncreated: {{date}}\n---\n\n# {{title}}\n\n' });
+          await this.plugin.saveSettings();
+          this.display();
+        }),
+      );
+  }
+
   // ─── 扫描设置 ─────────────────────────────────────
 
   private buildScanSettingsSection(container: HTMLElement): void {
-    container.createEl('h2', { text: '扫描设置' });
+    container.createEl('h3', { text: '扫描频率与大小' });
 
     new Setting(container)
       .setName('扫描频率')
@@ -239,7 +343,7 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
   // ─── 文件类型管理 ──────────────────────────────────
 
   private buildFileTypeSection(container: HTMLElement): void {
-    container.createEl('h2', { text: '扫描文件类型' });
+    container.createEl('h3', { text: '允许的扩展名' });
     container.createEl('p', {
       text: '插件只处理这些类型的文件，其他文件（图片、PDF、音频等）完全跳过。',
       cls: 'setting-item-description',
@@ -325,7 +429,7 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
   // ─── 忽略规则 ─────────────────────────────────────
 
   private buildIgnoreSection(container: HTMLElement): void {
-    container.createEl('h2', { text: '忽略规则' });
+    container.createEl('h3', { text: '忽略模式' });
     container.createEl('p', {
       text: '匹配这些模式的文件夹和文件将在扫描时跳过。支持 glob 通配符（如 *.exe）。',
       cls: 'setting-item-description',
@@ -411,37 +515,7 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
   // ─── 显示设置 ─────────────────────────────────────
 
   private buildDisplaySection(container: HTMLElement): void {
-    container.createEl('h2', { text: '显示设置' });
-
-    new Setting(container)
-      .setName('显示标签云')
-      .setDesc('在仪表盘中展示跨库标签云')
-      .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.ui.showTagCloud).onChange(async (value) => {
-          this.plugin.settings.ui.showTagCloud = value;
-          await this.plugin.saveSettings();
-        }),
-      );
-
-    new Setting(container)
-      .setName('显示健康度评分')
-      .setDesc('在仪表盘中展示知识库健康度分析')
-      .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.ui.showHealthScore).onChange(async (value) => {
-          this.plugin.settings.ui.showHealthScore = value;
-          await this.plugin.saveSettings();
-        }),
-      );
-
-    new Setting(container)
-      .setName('显示嵌入引用概览')
-      .setDesc('在仪表盘中展示图片/音频/视频嵌入统计')
-      .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.ui.showEmbedRef).onChange(async (value) => {
-          this.plugin.settings.ui.showEmbedRef = value;
-          await this.plugin.saveSettings();
-        }),
-      );
+    container.createEl('h3', { text: '显示选项' });
 
     new Setting(container)
       .setName('最近更新最大条数')
@@ -457,16 +531,6 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
           }),
       );
 
-    new Setting(container)
-      .setName('紧凑模式')
-      .setDesc('使用更紧凑的布局减少视觉间距')
-      .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.ui.compactMode).onChange(async (value) => {
-          this.plugin.settings.ui.compactMode = value;
-          await this.plugin.saveSettings();
-        }),
-      );
-
     // 调试模式
     new Setting(container)
       .setName('调试模式')
@@ -475,7 +539,6 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
         toggle.setValue(this.plugin.settings.ui.debug).onChange(async (value) => {
           this.plugin.settings.ui.debug = value;
           await this.plugin.saveSettings();
-          // 动态启用/禁用调试日志
           if (value) {
             this.plugin.debugLogger.enabled = true;
             this.plugin.debugLogger.captureConsole();
@@ -487,10 +550,9 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
       );
 
     // 模块开关
-    this.containerEl.createEl('h2', { text: '模块开关' });
-    this.containerEl.createEl('p', { text: '关闭的模块不会在仪表盘中显示。', cls: 'setting-item-description' });
+    container.createEl('h3', { text: '模块开关' });
+    container.createEl('p', { text: '关闭的模块不会在仪表盘中显示。', cls: 'setting-item-description' });
 
-    const mods = this.plugin.settings.ui.modules;
     const modNames: Record<string, string> = {
       stats: '统计概览', tasks: '任务待办', recent: '最近更新', weekly: '活跃动态',
       health: '库健康度', suggestions: '建议', embed: '嵌入引用', otherVaults: '其他库概况', orphans: '无链接笔记',
@@ -499,8 +561,8 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
       new Setting(container)
         .setName(name)
         .addToggle((toggle) =>
-          toggle.setValue((mods as Record<string, boolean>)[key]).onChange(async (value) => {
-            (mods as Record<string, boolean>)[key] = value;
+          toggle.setValue(!!this.plugin.settings.ui.modules[key as keyof typeof this.plugin.settings.ui.modules]).onChange(async (value) => {
+            (this.plugin.settings.ui.modules as Record<string, boolean>)[key] = value;
             await this.plugin.saveSettings();
           }),
         );

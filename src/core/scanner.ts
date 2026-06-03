@@ -1,3 +1,13 @@
+/**
+ * VaultScanner — 知识库扫描器
+ *
+ * 双模式扫描：
+ *   - Host Vault（当前库）：通过 Obsidian MetadataCache API，零 I/O
+ *   - External Vault（外库）：通过 fs 遍历文件系统
+ *
+ * 支持全量扫描、增量扫描（基于 mtime）、自动定时扫描。
+ * 扫描期间通过 AbortController 支持中断。
+ */
 import { VaultCache } from './cache';
 import { PerformanceMonitor } from '../utils/performance';
 import { LinkParser } from '../utils/link-parser';
@@ -6,6 +16,7 @@ import type VaultCommanderPlugin from '../main';
 import type { VaultConfig } from '../types/settings';
 import type { VaultSnapshot, NoteChange, TaskItem } from '../types/snapshot';
 
+// ─── 正则常量 ─────────────────────────────────────
 const YAML_FRONT_RE = /^---\n([\s\S]*?)\n---/;
 const TAG_LINE_RE = /^tags?\s*:\s*(.+)$/im;
 const TAG_LIST_RE = /(?:^|\s)- (.+)/gm;
@@ -89,8 +100,11 @@ export class VaultScanner {
     await this.cache.initialize();
   }
 
-  // ─── 全量扫描 ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════
+  // 全量扫描
+  // ═══════════════════════════════════════════════════
 
+  /** 扫描所有启用的库（包括当前库），返回 vaultId → VaultSnapshot 映射 */
   async scanAll(): Promise<Map<string, VaultSnapshot>> {
     if (this.isScanning) {
       console.warn('[VC] 扫描正在进行中，跳过');
@@ -154,8 +168,11 @@ export class VaultScanner {
     return results;
   }
 
-  // ─── 增量扫描 ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════
+  // 增量扫描
+  // ═══════════════════════════════════════════════════
 
+  /** 基于 mtime 对比的增量扫描，只处理变更文件 */
   async scanIncremental(): Promise<Map<string, VaultSnapshot>> {
     if (this.isScanning) {
       return this.cache.getAllSnapshots();
@@ -372,7 +389,7 @@ export class VaultScanner {
               return lower === 'task' || lower === 'todo';
             });
             if (hasTaskTag2 && /\[[ x]\]/.test(content)) {
-              const fileTasks = parseTasks(content, config.id, config.name, relPath);
+              const fileTasks = parseTasks(content, config.id, config.name, relPath, stat.mtimeMs);
               snapshot.tasks.push(...fileTasks);
             }
 
@@ -414,8 +431,11 @@ export class VaultScanner {
     return snapshot;
   }
 
-  // ─── 单库扫描 ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════
+  // 单库扫描（路由：当前库 / 外库）
+  // ═══════════════════════════════════════════════════
 
+  /** 根据路径判断使用 MetadataCache API 还是 fs 遍历 */
   async scanVault(config: VaultConfig): Promise<VaultSnapshot | null> {
     const adapterPath = (this.plugin.app.vault.adapter as unknown as Record<string, unknown>)
       .basePath as string | undefined;
@@ -585,7 +605,7 @@ export class VaultScanner {
             return lower === 'task' || lower === 'todo';
           });
           if (hasTaskTag && /\[[ x]\]/.test(content)) {
-            const fileTasks = parseTasks(content, config.id, config.name, relPath);
+            const fileTasks = parseTasks(content, config.id, config.name, relPath, stat.mtimeMs);
             snapshot.tasks.push(...fileTasks);
           }
 
@@ -618,8 +638,11 @@ export class VaultScanner {
     return snapshot;
   }
 
-  // ─── 自动扫描 ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════
+  // 自动扫描
+  // ═══════════════════════════════════════════════════
 
+  /** 根据用户配置的频率启动定时增量扫描 */
   startAutoScan(): void {
     this.stopAutoScan();
 
@@ -649,10 +672,15 @@ export class VaultScanner {
       this.autoScanTimer = null;
     }
     this.abortController?.abort();
+    this.abortController = null;
+    this.isScanning = false;
   }
 
-  // ─── 查询方法 ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════
+  // 查询与工具
+  // ═══════════════════════════════════════════════════
 
+  /** 获取当前 Obsidian 库的虚拟配置（无需手动添加） */
   getHostVaultConfig(): VaultConfig {
     const adapter = this.plugin.app.vault.adapter as unknown as { basePath: string };
     const basePath = adapter.basePath || '';
@@ -684,8 +712,11 @@ export class VaultScanner {
     this.stopAutoScan();
   }
 
-  // ─── 任务提取 ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════
+  // 任务提取（只处理带 #task/#todo 标签的文件）
+  // ═══════════════════════════════════════════════════
 
+  /** 遍历当前库中带 task/todo 标签的 Markdown 文件，解析 - [ ] 列表 */
   private async extractHostVaultTasks(config: VaultConfig): Promise<TaskItem[]> {
     const { app } = this.plugin;
     const markdownFiles = app.vault.getMarkdownFiles();
@@ -718,7 +749,7 @@ export class VaultScanner {
       try {
         const content = await app.vault.cachedRead(file);
         if (/\[[ x]\]/.test(content)) {
-          const fileTasks = parseTasks(content, config.id, vaultName, file.path);
+          const fileTasks = parseTasks(content, config.id, vaultName, file.path, file.stat.mtime);
           tasks.push(...fileTasks);
         }
       } catch {
@@ -729,8 +760,11 @@ export class VaultScanner {
     return tasks;
   }
 
-  // ─── 内部工具 ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════
+  // 快照计算与统计
+  // ═══════════════════════════════════════════════════
 
+  /** 创建空的快照骨架 */
   private createEmptySnapshot(vaultId: string): VaultSnapshot {
     return {
       vaultId,
@@ -841,8 +875,11 @@ export class VaultScanner {
   }
 }
 
-// ─── 模块级辅助函数 ───────────────────────────────
+// ═══════════════════════════════════════════════════
+// 模块级辅助函数
+// ═══════════════════════════════════════════════════
 
+/** 判断文件/文件夹是否应被忽略 */
 function shouldIgnore(
   relPath: string,
   entryName: string,
@@ -904,11 +941,13 @@ async function readFileContent(filePath: string, maxSize: number, knownSize?: nu
   }
 }
 
+/** 从 Markdown 文本中解析 - [ ] / - [x] 任务列表，提取优先级和截止日期 */
 function parseTasks(
   content: string,
   vaultId: string,
   vaultName: string,
   fileName: string,
+  fileMtime: number,
 ): TaskItem[] {
   const tasks: TaskItem[] = [];
   let lineNum = 0;
@@ -946,6 +985,7 @@ function parseTasks(
       line: lineNum,
       priority,
       dueDate,
+      mtime: fileMtime,
     });
   }
 

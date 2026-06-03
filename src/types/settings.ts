@@ -33,9 +33,15 @@ export interface IgnoreSettings {
   ignoreDotFiles: boolean;
 }
 
+export interface StoredTemplate {
+  name: string;
+  content: string;
+}
+
 export interface TemplateSettings {
   defaultTemplates: Record<string, string>;
   defaultFolders: Record<string, string>;
+  customTemplates: StoredTemplate[];
 }
 
 export interface UISettings {

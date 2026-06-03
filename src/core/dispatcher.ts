@@ -1,3 +1,13 @@
+/**
+ * NoteDispatcher — 笔记操作中心
+ *
+ * 负责笔记的跨库 CRUD 操作：
+ *   - createNote：新建笔记到指定外库
+ *   - dispatchNote：将当前库笔记分发到外库
+ *   - importNote：从外库导入笔记到当前库
+ *   - deleteNote：删除当前库或外库笔记
+ *   - jumpToNote / openVault：通过 obsidian:// URI 跳转
+ */
 import * as path from 'path';
 import * as fs from 'fs';
 import type { VaultConfig } from '../types/settings';
@@ -48,7 +58,7 @@ export class NoteDispatcher {
         }
       }
     } catch {
-      // Fall back to just root
+      console.warn(`[VC] 获取文件夹列表失败: ${vaultId}`);
     }
 
     return [...folders].sort();
@@ -75,6 +85,7 @@ export class NoteDispatcher {
           path: vault.templateFolder ? `${vault.templateFolder}/${e.name}` : `Templates/${e.name}`,
         }));
     } catch {
+      console.warn(`[VC] 获取模板列表失败: ${vaultId}`);
       return [];
     }
   }
@@ -146,6 +157,13 @@ export class NoteDispatcher {
   }
 
   private async loadTemplate(vault: VaultConfig, templateId: string): Promise<string> {
+    // Custom template from plugin settings
+    if (templateId.startsWith('__custom__::')) {
+      const name = templateId.replace('__custom__::', '');
+      const tpl = this.plugin.settings.templates.customTemplates?.find((t) => t.name === name);
+      return tpl?.content ?? '';
+    }
+
     const templatePath = vault.templateFolder
       ? path.join(vault.path, vault.templateFolder, templateId)
       : path.join(vault.path, templateId);
@@ -202,8 +220,8 @@ export class NoteDispatcher {
     }
   }
 
+  /** 删除笔记（当前库用 Obsidian API，外库用 fs.unlink） */
   async deleteNote(vaultId: string, filePath: string): Promise<{ success: boolean; error?: string }> {
-    // Host vault: use Obsidian API
     const hostConfig = this.plugin.scanner.getHostVaultConfig();
     if (vaultId === '__host__' || PathUtils.normalize(vaultId) === PathUtils.normalize(hostConfig.id)) {
       try {
