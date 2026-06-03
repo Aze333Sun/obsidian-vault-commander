@@ -8,7 +8,7 @@ export class NewNoteModal {
   constructor(private plugin: VaultCommanderPlugin) {}
 
   open(): void {
-    if (this.container) return;
+    this.close();
 
     this.container = document.createElement('div');
     document.body.appendChild(this.container);

@@ -30,6 +30,17 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     compactMode: false,
     searchHistory: [],
     debug: false,
+    modules: {
+      stats: true,
+      tasks: true,
+      recent: true,
+      weekly: true,
+      health: true,
+      suggestions: true,
+      embed: true,
+      otherVaults: true,
+      orphans: true,
+    },
   },
   version: 1,
 };

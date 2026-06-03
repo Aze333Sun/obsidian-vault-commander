@@ -8,7 +8,7 @@ export class DispatchModal {
   constructor(private plugin: VaultCommanderPlugin) {}
 
   open(): void {
-    if (this.container) return;
+    this.close();
 
     const activeFile = this.plugin.app.workspace.getActiveFile();
     if (!activeFile) {

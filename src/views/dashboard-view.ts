@@ -66,6 +66,7 @@ export class DashboardView extends ItemView {
         onOpenTask: (vaultId: string, fileName: string, line: number) =>
           this.openTask(vaultId, fileName, line),
         onToggleTask: (task: TaskItem) => this.toggleTask(task),
+        enabledModules: this.plugin.settings.ui.modules || {},
         onDeleteNote: (vaultId: string, filePath: string) => this.deleteNote(vaultId, filePath),
         onRefresh: () => this.plugin.scanner.refresh(),
         onOpenNote: (vaultId: string, filePath: string) => {
@@ -73,6 +74,11 @@ export class DashboardView extends ItemView {
           modal.open(vaultId, filePath);
         },
         onNewNote: () => {
+          const extVaults = this.plugin.settings.vaults.filter((v: { isEnabled: boolean }) => v.isEnabled);
+          if (extVaults.length === 0) {
+            new (require('obsidian').Notice)('请先在设置中添加外库');
+            return;
+          }
           if (!this.plugin.newNoteModal) {
             const { NewNoteModal } = require('../modals/new-note-modal');
             (this.plugin as any).newNoteModal = new NewNoteModal(this.plugin);
@@ -319,28 +325,40 @@ export class DashboardView extends ItemView {
   }
 
   private async toggleTask(task: TaskItem): Promise<void> {
-    const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === task.vaultId)
-      || (task.vaultId === HOST_VAULT_ID ? this.plugin.scanner.getHostVaultConfig() : null);
-    if (!vault) return;
-
+    const isHost = task.vaultId === HOST_VAULT_ID
+      || !this.plugin.settings.vaults.find((v: { id: string }) => v.id === task.vaultId);
     try {
-      const fs = require('fs');
-      const nodePath = require('path');
-      const fullPath = nodePath.join(vault.path, task.fileName);
-      let content = await fs.promises.readFile(fullPath, 'utf-8');
-      const lines = content.split('\n');
-      const lineIdx = task.line - 1;
-
-      if (lineIdx >= 0 && lineIdx < lines.length) {
-        const line = lines[lineIdx];
-        if (task.done) {
-          lines[lineIdx] = line.replace(/\[[xX]\]/, '[ ]');
-        } else {
-          lines[lineIdx] = line.replace(/\[ \]/, '[x]');
+      if (isHost) {
+        // Use Obsidian API for host vault
+        const file = this.plugin.app.vault.getAbstractFileByPath(task.fileName);
+        if (!file) return;
+        let content = await this.plugin.app.vault.read(file as any);
+        const lines = content.split('\n');
+        const lineIdx = task.line - 1;
+        if (lineIdx >= 0 && lineIdx < lines.length) {
+          lines[lineIdx] = task.done
+            ? lines[lineIdx].replace(/\[[xX]\]/, '[ ]')
+            : lines[lineIdx].replace(/\[ \]/, '[x]');
+          await this.plugin.app.vault.modify(file as any, lines.join('\n'));
+          this.plugin.scanner.scanIncremental();
         }
-        await fs.promises.writeFile(fullPath, lines.join('\n'), 'utf-8');
-        // Trigger re-scan
-        this.plugin.scanner.scanIncremental();
+      } else {
+        // External vault: use fs
+        const vault = this.plugin.settings.vaults.find((v: { id: string }) => v.id === task.vaultId);
+        if (!vault) return;
+        const fs = require('fs');
+        const nodePath = require('path');
+        const fullPath = nodePath.join(vault.path, task.fileName);
+        let content = await fs.promises.readFile(fullPath, 'utf-8');
+        const lines = content.split('\n');
+        const lineIdx = task.line - 1;
+        if (lineIdx >= 0 && lineIdx < lines.length) {
+          lines[lineIdx] = task.done
+            ? lines[lineIdx].replace(/\[[xX]\]/, '[ ]')
+            : lines[lineIdx].replace(/\[ \]/, '[x]');
+          await fs.promises.writeFile(fullPath, lines.join('\n'), 'utf-8');
+          this.plugin.scanner.scanIncremental();
+        }
       }
     } catch (err) {
       this.plugin.debugLogger.addLog('error', 'task', `切换任务状态失败: ${String(err)}`);

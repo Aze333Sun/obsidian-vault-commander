@@ -58,6 +58,7 @@
   export let onClearDebugLogs: (() => void) | null = null;
   export let onOpenTask: (vaultId: string, fileName: string, line: number) => void = () => {};
   export let onDeleteNote: ((vaultId: string, filePath: string) => void) | null = null;
+  export let enabledModules: Record<string, boolean> = {};
   export let onToggleTask: (task: {
     id: string; vaultId: string; fileName: string; title: string; done: boolean;
     line: number; dueDate: string | null; priority: number;
@@ -126,14 +127,14 @@
 
   let slots: Slot[] = [
     { id: 0, col: 0, key: 'stats' },
-    { id: 1, col: 0, key: 'tasks' },
-    { id: 2, col: 0, key: 'recent' },
-    { id: 3, col: 0, key: 'weekly' },
+    { id: 1, col: 0, key: 'recent' },
+    { id: 2, col: 0, key: 'weekly' },
+    { id: 3, col: 0, key: 'health' },
     { id: 4, col: 0, key: 'empty' },
     { id: 5, col: 0, key: 'empty' },
     { id: 6, col: 0, key: 'empty' },
     { id: 7, col: 0, key: 'empty' },
-    { id: 8, col: 1, key: 'health' },
+    { id: 8, col: 1, key: 'tasks' },
     { id: 9, col: 1, key: 'suggestions' },
     { id: 10, col: 1, key: 'embed' },
     { id: 11, col: 1, key: 'otherVaults' },
@@ -176,7 +177,13 @@
   }
 
   // Check if section has data
+  function isModuleEnabled(key: SectionKey): boolean {
+    if (key === 'empty') return true;
+    return enabledModules[key] !== false;
+  }
+
   function hasData(key: SectionKey): boolean {
+    if (!isModuleEnabled(key)) return false;
     switch (key) {
       case 'stats': return activeStats.length > 0;
       case 'tasks': return activeTasks.length > 0;
@@ -188,6 +195,21 @@
       case 'weekly': return activeStats.length > 0;
       case 'orphans': return activeOrphans.length > 0;
       default: return false;
+    }
+  }
+
+  function slotName(key: SectionKey): string {
+    switch (key) {
+      case 'stats': return '统计概览';
+      case 'tasks': return '任务待办';
+      case 'recent': return '最近更新';
+      case 'health': return '库健康度';
+      case 'suggestions': return '建议';
+      case 'embed': return '嵌入引用';
+      case 'otherVaults': return '其他库概况';
+      case 'weekly': return '活跃动态';
+      case 'orphans': return '无链接笔记';
+      default: return '';
     }
   }
 
@@ -229,8 +251,8 @@
     <EmptyState title="欢迎使用控制台" description="请先在设置中添加你的分库路径。" />
   {:else}
     <!-- Cards + tags row -->
-    {#if externalVaults.length > 0}
-      <div class="vc-cards-area" style="height:{cardAreaH}px">
+    <div class="vc-cards-area" style="height:{cardAreaH}px">
+      {#if externalVaults.length > 0}
         {#each externalVaults as vault, i (vault.id)}
           {@const s = vaultStatMap.get(vault.id)}
           {@const selected = activeVaultId === vault.id}
@@ -254,13 +276,19 @@
             <span class="vc-card-num vc-card-add">+{totalAdded}<small> 本周</small></span>
           </button>
         {/if}
-        {#if activeTags.length > 0}
-          <div class="vc-tags-inline" style="right:{activeVaultId !== null ? '228px' : '8px'}">
-            <TagCloud tags={activeTags} {onTagClick} />
-          </div>
-        {/if}
-      </div>
-    {/if}
+      {:else}
+        <div class="vc-card-placeholder">
+          <span class="vc-card-icon">◇</span>
+          <span class="vc-card-name">外库卡片</span>
+          <span class="vc-card-hint">添加外库后在此显示</span>
+        </div>
+      {/if}
+      {#if activeTags.length > 0}
+        <div class="vc-tags-inline" style="right:{activeVaultId !== null ? '228px' : '8px'}">
+          <TagCloud tags={activeTags} {onTagClick} />
+        </div>
+      {/if}
+    </div>
 
     <!-- 拖拽网格 -->
     <div class="vc-grid">
@@ -280,6 +308,7 @@
                 {#if slot.key === 'empty'}
                   <span class="vc-slot-hint">拖放模块到此处</span>
                 {:else}
+                  <span class="vc-slot-name">{slotName(slot.key)}</span>
                   <span class="vc-slot-hint">暂无数据</span>
                 {/if}
               </div>
@@ -320,7 +349,7 @@
                 <OrphanNotes notes={activeOrphans} {onOpenNote} onDeleteNote={(vid, fp) => onDeleteNote?.(vid, fp)} />
               </Section>
             {:else if slot.key === 'weekly'}
-              <Section title="活跃动态">
+              <Section title="活跃动态" defaultOpen={false}>
                 <WeeklyOverview added24h={wAdd24} added7d={totalAdded} added30d={wAdd30} modified24h={0} modified7d={0} modified30d={0} />
               </Section>
             {:else if slot.key === 'otherVaults'}
@@ -351,6 +380,7 @@
                 {#if slot.key === 'empty'}
                   <span class="vc-slot-hint">拖放模块到此处</span>
                 {:else}
+                  <span class="vc-slot-name">{slotName(slot.key)}</span>
                   <span class="vc-slot-hint">暂无数据</span>
                 {/if}
               </div>
@@ -383,7 +413,7 @@
                 <OrphanNotes notes={activeOrphans} {onOpenNote} onDeleteNote={(vid, fp) => onDeleteNote?.(vid, fp)} />
               </Section>
             {:else if slot.key === 'weekly'}
-              <Section title="活跃动态">
+              <Section title="活跃动态" defaultOpen={false}>
                 <WeeklyOverview added24h={wAdd24} added7d={totalAdded} added30d={wAdd30} modified24h={0} modified7d={0} modified30d={0} />
               </Section>
             {:else if slot.key === 'otherVaults'}
@@ -436,6 +466,15 @@
   .vc-card-num { font-size: 11px; font-weight: 600; color: var(--text-muted); }
   .vc-card-num small { font-size: 9px; font-weight: 400; color: var(--text-faint); }
   .vc-card-add { color: var(--color-green); }
+  .vc-card-placeholder {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 100px; height: 100px; gap: 4px;
+    border: 2px dashed var(--background-modifier-border); border-radius: 14px;
+    position: absolute; left: 16px; top: 4px;
+  }
+  .vc-card-placeholder .vc-card-icon { font-size: 20px; color: var(--text-faint); }
+  .vc-card-placeholder .vc-card-name { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+  .vc-card-hint { font-size: 9px; color: var(--text-faint); text-align: center; }
   .vc-tags-inline { position: absolute; top: 6px; max-width: calc(100% - 260px); overflow: hidden; transition: right 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
   /* Grid */
   .vc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; padding: 8px 14px 14px; flex: 1; align-content: start; }
@@ -444,7 +483,8 @@
   .vc-slot[draggable="true"]:hover { cursor: grab; }
   .vc-slot[draggable="true"]:active { cursor: grabbing; }
   .vc-slot-empty { display: flex; align-items: center; justify-content: center; min-height: 48px; border: 2px dashed var(--background-modifier-border); border-radius: 10px; }
-  .vc-slot-hint { font-size: 11px; color: var(--text-faint); }
+  .vc-slot-name { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .vc-slot-hint { font-size: 10px; color: var(--text-faint); }
   /* Summary */
   .vc-summary-row { display: flex; gap: 24px; padding: 8px 0 4px; border-bottom: 1px solid var(--background-modifier-border-hover); margin-bottom: 4px; }
   .vc-summary-item { display: flex; align-items: baseline; gap: 3px; font-size: 14px; color: var(--text-muted); }

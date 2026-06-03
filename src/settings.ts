@@ -486,6 +486,26 @@ export class VaultCommanderSettingTab extends PluginSettingTab {
         }),
       );
 
+    // 模块开关
+    this.containerEl.createEl('h2', { text: '模块开关' });
+    this.containerEl.createEl('p', { text: '关闭的模块不会在仪表盘中显示。', cls: 'setting-item-description' });
+
+    const mods = this.plugin.settings.ui.modules;
+    const modNames: Record<string, string> = {
+      stats: '统计概览', tasks: '任务待办', recent: '最近更新', weekly: '活跃动态',
+      health: '库健康度', suggestions: '建议', embed: '嵌入引用', otherVaults: '其他库概况', orphans: '无链接笔记',
+    };
+    for (const [key, name] of Object.entries(modNames)) {
+      new Setting(container)
+        .setName(name)
+        .addToggle((toggle) =>
+          toggle.setValue((mods as Record<string, boolean>)[key]).onChange(async (value) => {
+            (mods as Record<string, boolean>)[key] = value;
+            await this.plugin.saveSettings();
+          }),
+        );
+    }
+
     // 搜索历史管理
     const historyCount = this.plugin.settings.ui.searchHistory.length;
     new Setting(container)

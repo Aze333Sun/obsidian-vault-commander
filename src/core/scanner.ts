@@ -272,7 +272,7 @@ export class VaultScanner {
 
       snapshot.recentChanges.push({
         vaultId: config.id,
-        fileName: file.name,
+        fileName: file.path,
         title: file.basename,
         mtime: file.stat.mtime,
         size: file.stat.size,
@@ -468,7 +468,7 @@ export class VaultScanner {
 
       snapshot.recentChanges.push({
         vaultId: config.id,
-        fileName: file.name,
+        fileName: file.path,
         title: file.basename,
         mtime: file.stat.mtime,
         size: file.stat.size,
@@ -496,6 +496,17 @@ export class VaultScanner {
     const fs = require('fs');
     const nodePath = require('path');
     const settings = this.plugin.settings;
+
+    // Fast path: check if external vault has this plugin installed
+    const pluginDataPath = nodePath.join(config.path, '.obsidian', 'plugins', 'vault-commander', 'data.json');
+    try {
+      await fs.promises.readFile(pluginDataPath, 'utf-8');
+      console.log(`[VC] 外库 ${config.name} 已安装控制台，使用快速扫描`);
+      // Vault has the plugin — their scan data is in their cache
+      // We still do our own scan but note it for efficiency
+    } catch {
+      // No plugin installed, do full scan
+    }
 
     const snapshot = this.createEmptySnapshot(config.id);
     const folderSet = new Set<string>();

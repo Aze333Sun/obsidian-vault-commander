@@ -46,4 +46,15 @@ export interface UISettings {
   compactMode: boolean;
   searchHistory: string[];
   debug: boolean;
+  modules: {
+    stats: boolean;
+    tasks: boolean;
+    recent: boolean;
+    weekly: boolean;
+    health: boolean;
+    suggestions: boolean;
+    embed: boolean;
+    otherVaults: boolean;
+    orphans: boolean;
+  };
 }

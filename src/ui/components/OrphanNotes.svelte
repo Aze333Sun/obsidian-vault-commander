@@ -1,4 +1,8 @@
 <script lang="ts">
+  import Paginator from '../shared/Paginator.svelte';
+
+  const PAGE_SIZE = 8;
+
   export let notes: Array<{
     vaultId: string; vaultName: string; fileName: string; title: string; folder: string;
   }> = [];
@@ -6,11 +10,15 @@
   export let onDeleteNote: (vaultId: string, filePath: string) => void = () => {};
 
   let confirmId: string | null = null;
+  let page = 0;
+  $: total = notes.length;
+  $: visible = notes.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  $: if (page * PAGE_SIZE >= notes.length) page = 0;
 </script>
 
 {#if notes.length > 0}
   <div class="vc-orphans">
-    {#each notes as note (note.vaultId + '::' + note.fileName)}
+    {#each visible as note (note.vaultId + '::' + note.fileName)}
       <div class="vc-orphan-item">
         <button class="vc-orphan-body" on:click={() => onOpenNote(note.vaultId, note.fileName)}>
           <span class="vc-orphan-title">{note.title || note.fileName}</span>
@@ -28,6 +36,7 @@
       </div>
     {/each}
   </div>
+  <Paginator {total} pageSize={PAGE_SIZE} current={page} onPage={(n) => (page = n)} />
 {/if}
 
 <style>
