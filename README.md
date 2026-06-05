@@ -1,6 +1,6 @@
-# 控制台
+# Vault Commander（控制台）
 
-Obsidian 跨库管理插件。在同一界面管理多个 Obsidian 知识库，支持仪表盘、跨库搜索、笔记分发导入、任务追踪、健康度分析。
+Obsidian 跨库管理插件 — 仪表盘、搜索、笔记分发、洞察。在同一界面管理多个 Obsidian 知识库，支持仪表盘、跨库搜索、笔记分发导入、任务追踪、健康度分析。
 
 ---
 
@@ -114,6 +114,26 @@ src/
 test/                — 11 个测试文件，76 个用例
 ```
 
+---
+
+## 使用截图
+
+### 仪表盘
+
+![仪表盘](screenshots/dashboard.png)
+
+### 跨库搜索
+
+![搜索](screenshots/search.png)
+
+### 笔记分发
+
+![分发](screenshots/dispatch.png)
+
+![分发-选择目标](screenshots/dispatch2.png)
+
+---
+
 ## 许可证
 
-MIT
+MIT © ze
